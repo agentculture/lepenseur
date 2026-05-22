@@ -8,6 +8,8 @@ description: >
 
 # SonarClaude
 
+> Vendored from steward (canonical upstream: `docs/skill-sources.md`); this copy is owned by lepenseur and may diverge.
+
 Query SonarCloud projects for quality gate status, issues, metrics, and security hotspots.
 
 ## Prerequisites

@@ -10,6 +10,8 @@ description: >
 
 # Version Bump
 
+> Vendored from steward (canonical upstream: `docs/skill-sources.md`); this copy is owned by lepenseur and may diverge.
+
 Bump the semver version in `pyproject.toml` and prepend a new entry to
 `CHANGELOG.md`. Mirrors the AgentCulture workflow used by `culture`,
 `afi-cli`, `cfafi`, and other org repos; vendored here so the repo is

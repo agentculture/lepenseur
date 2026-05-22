@@ -1,4 +1,4 @@
-# Per-machine paths and settings for lecodeur's skills.
+# Per-machine paths and settings for lepenseur's skills.
 #
 # Copy this file to `.claude/skills.local.yaml` (git-ignored) and fill in the
 # values for your machine. Skills read the local file and fall back to this
@@ -11,4 +11,4 @@ workspace_root: ".."
 
 # The Culture nick this repo's agent posts as. Resolved from culture.yaml's
 # `suffix:` when unset; the repo basename is the final fallback.
-nick: "lecodeur"
+nick: "lepenseur"

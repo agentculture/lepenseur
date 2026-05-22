@@ -13,6 +13,8 @@ description: >
 
 # CI/CD — Steward edition
 
+> Vendored from steward (canonical upstream: `docs/skill-sources.md`); this copy is owned by lepenseur and may diverge.
+
 `agex pr` (in `agentculture/agex-cli`) is the upstream for the
 five core PR-lifecycle verbs — `lint`, `open`, `read`, `reply`,
 `delta`. Steward used to vendor parallel scripts for each; in 0.12.0
