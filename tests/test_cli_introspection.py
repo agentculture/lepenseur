@@ -58,6 +58,19 @@ def test_cli_noun_bare_is_non_empty(capsys: pytest.CaptureFixture[str]) -> None:
     assert capsys.readouterr().out.strip()
 
 
+def test_cli_overview_unknown_flag_structured_error(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # `cli overview` parse errors must route through the structured error
+    # contract (error:/hint: + exit 1), not argparse's default stderr/exit 2.
+    with pytest.raises(SystemExit) as exc:
+        main(["cli", "overview", "--bogus"])
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert err.startswith("error:")
+    assert "hint:" in err
+
+
 # --- doctor (stub) --------------------------------------------------------
 
 

@@ -30,7 +30,10 @@ def register(sub: argparse._SubParsersAction) -> None:
     )
     p.add_argument("--json", action="store_true", help="Emit structured JSON.")
     p.set_defaults(func=_no_verb, json=False)
-    noun_sub = p.add_subparsers(dest="cli_command")
+    # `p` is a _LepenseurArgumentParser (the top-level subparsers were built with
+    # that parser_class); propagate it so `cli overview` parse errors route through
+    # the structured error contract instead of argparse's default stderr/exit 2.
+    noun_sub = p.add_subparsers(dest="cli_command", parser_class=type(p))
     ov = noun_sub.add_parser("overview", help="Describe the lepenseur CLI surface.")
     ov.add_argument("--json", action="store_true", help="Emit structured JSON.")
     ov.set_defaults(func=cmd_cli_overview)
