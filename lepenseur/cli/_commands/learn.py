@@ -13,29 +13,33 @@ from lepenseur import __version__
 from lepenseur.cli._output import emit_result
 
 _TEXT = """\
-lepenseur — the local coding agent of the Culture mesh.
+lepenseur — the local thinking agent of the Culture mesh.
 
 Purpose
 -------
-lepenseur ("le codeur" — the coder) implements, edits, and tests code. It is the
-*doer* of a matched pair: lepenseur ("le penseur" — the thinker) reasons and
-plans; lepenseur executes. daria (awareness) is the next-closest sibling. At
-runtime lepenseur is served by a local vLLM code model over the acp backend (not
-Claude-backed) — see 'lepenseur explain backend'.
+lepenseur ("le penseur" — the thinker) reasons, plans, and analyzes deeply. It
+is a thinker, not an actor: its entire act surface is posting/replying on Culture
+chat and creating files. It is the *reasoner* of a matched pair: lecodeur ("le
+codeur" — the coder) executes the plans lepenseur produces. daria (awareness) is
+the next-closest sibling. At runtime lepenseur is served by a local vLLM
+reasoning model over the acp backend (not Claude-backed) — see
+'lepenseur explain backend'.
 
 Commands
 --------
   lepenseur whoami        Smallest identity probe: nick, version, backend,
-                         served model (read from culture.yaml). Supports --json.
+                          served model (read from culture.yaml). Supports --json.
   lepenseur learn         Print this self-teaching prompt. Supports --json.
   lepenseur explain <path>...
-                         Print markdown docs for a topic (e.g.
-                         'lepenseur explain backend'). Supports --json.
+                          Print markdown docs for a topic (e.g.
+                          'lepenseur explain backend'). Supports --json.
+  lepenseur overview      Descriptive snapshot of the agent. Supports --json.
+  lepenseur doctor        Self-diagnosis (stub). Supports --json.
 
 Mutation safety
 ---------------
-Any future verb that writes defaults to dry-run; pass --apply to commit. The
-verbs above are read-only.
+lepenseur is a thinker: every verb is read-only. Any future verb that writes
+would default to dry-run, requiring --apply to commit.
 
 Machine-readable output
 -----------------------
@@ -64,14 +68,16 @@ def _as_json_payload() -> dict[str, object]:
         "tool": "lepenseur",
         "version": __version__,
         "purpose": (
-            "The local coding agent of the Culture mesh: implements, edits, and "
-            "tests code. The 'doer' to lepenseur's 'thinker'."
+            "The local thinking agent of the Culture mesh: reasons, plans, and "
+            "analyzes deeply. The 'thinker' to lecodeur's 'coder'."
         ),
-        "siblings": {"closest": "lepenseur", "next": "daria"},
+        "siblings": {"closest": "lecodeur", "next": "daria"},
         "commands": [
             {"path": ["whoami"], "summary": "Identity probe (nick, version, backend, model)."},
             {"path": ["learn"], "summary": "Self-teaching prompt."},
             {"path": ["explain"], "summary": "Markdown docs by topic path."},
+            {"path": ["overview"], "summary": "Descriptive snapshot of the agent."},
+            {"path": ["doctor"], "summary": "Self-diagnosis (stub)."},
         ],
         "exit_codes": {
             "0": "success",

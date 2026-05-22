@@ -1,4 +1,4 @@
-"""lepenseur — the local coding agent of the Culture mesh."""
+"""lepenseur — the local thinking agent of the Culture mesh."""
 
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _v

@@ -1,4 +1,4 @@
-"""Smoke tests for the lepenseur CLI entry point and its three verbs."""
+"""Smoke tests for the lepenseur CLI entry point and its inherited verbs."""
 
 from __future__ import annotations
 
@@ -40,7 +40,6 @@ def test_whoami_text(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(["whoami"])
     assert rc == 0
     out = capsys.readouterr().out
-    # Reads this repo's culture.yaml (walked up from the module).
     assert "nick: lepenseur" in out
     assert "backend: acp" in out
     assert "model:" in out
@@ -64,12 +63,11 @@ def test_learn_text(capsys: pytest.CaptureFixture[str]) -> None:
     assert rc == 0
     out = capsys.readouterr().out
     assert "lepenseur" in out
-    # Must mention purpose, exit codes, --json, and explain.
     assert "Exit-code policy" in out
     assert "--json" in out
     assert "explain" in out
-    # Sibling framing: thinker pair + daria.
-    assert "lepenseur" in out
+    # Sibling framing: coder pair + daria.
+    assert "lecodeur" in out
 
 
 def test_learn_json(capsys: pytest.CaptureFixture[str]) -> None:
@@ -79,7 +77,7 @@ def test_learn_json(capsys: pytest.CaptureFixture[str]) -> None:
     assert payload["tool"] == "lepenseur"
     assert payload["version"] == __version__
     assert payload["json_support"] is True
-    assert payload["siblings"]["closest"] == "lepenseur"
+    assert payload["siblings"]["closest"] == "lecodeur"
     assert payload["siblings"]["next"] == "daria"
 
 
@@ -95,12 +93,11 @@ def test_explain_root(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_explain_backend(capsys: pytest.CaptureFixture[str]) -> None:
-    # Acceptance criterion: `lepenseur explain backend` works.
     rc = main(["explain", "backend"])
     assert rc == 0
     out = capsys.readouterr().out
     assert "acp" in out
-    assert "Qwen3-Coder-Next" in out
+    assert "Nemotron" in out
     assert "vllm-local/" in out
 
 
@@ -121,7 +118,6 @@ def test_explain_unknown_path_errors(capsys: pytest.CaptureFixture[str]) -> None
 
 
 def test_every_catalog_path_resolves(capsys: pytest.CaptureFixture[str]) -> None:
-    # Every catalog entry must be reachable via the CLI.
     for path in known_paths():
         rc = main(["explain", *path])
         assert rc == 0, f"explain {' '.join(path)} failed"

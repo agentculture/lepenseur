@@ -12,17 +12,22 @@ from __future__ import annotations
 _ROOT = """\
 # lepenseur
 
-lepenseur ("le codeur" — *the coder*) is the **local coding agent** of the
-Culture mesh: a long-lived resident that implements, edits, and tests code.
+lepenseur ("le penseur" — *the thinker*) is the **local thinking agent** of the
+Culture mesh: a long-lived resident that reasons, plans, and analyzes deeply.
+
+## Thinker, not actor
+
+lepenseur does not execute code, run tools, or change the world. Its entire act
+surface is three things: **post to Culture chat, reply on Culture chat, and
+create files.** Thinking expressed through writing.
 
 ## The matched pair: thinker + coder
 
-lepenseur is the *doer* of a matched pair. Its closest sibling is
-**lepenseur** ("le penseur" — *the thinker*), which reasons, plans, and
-analyzes but only acts through writing (chat + files). lepenseur plans;
-lepenseur executes. The next-closest sibling is **daria** (awareness), which
-observes the mesh and surfaces drift. Together: daria notices, lepenseur
-reasons, lepenseur builds.
+lepenseur is the *reasoner* of a matched pair. Its closest sibling is
+**lecodeur** ("le codeur" — *the coder*), which implements, edits, and tests
+code. lepenseur plans; lecodeur executes. The next-closest sibling is **daria**
+(awareness), which observes the mesh and surfaces drift. Together: daria
+notices, lepenseur reasons, lecodeur builds.
 
 ## Verbs
 
@@ -30,12 +35,8 @@ reasons, lepenseur builds.
   model (read from `culture.yaml`).
 - `lepenseur learn` — structured self-teaching prompt.
 - `lepenseur explain <path>` — markdown docs for a topic.
-
-## Mutation safety
-
-Any verb that writes defaults to **dry-run**; pass `--apply` to commit. Agents
-call CLIs in loops, so safe-by-default is mandatory. The verbs above are
-read-only.
+- `lepenseur overview` — descriptive snapshot of the agent.
+- `lepenseur doctor` — self-diagnosis.
 
 ## Exit-code policy
 
@@ -48,15 +49,15 @@ read-only.
 
 - `lepenseur explain backend`
 - `lepenseur explain whoami`
-- `lepenseur explain learn`
-- `lepenseur explain explain`
+- `lepenseur explain overview`
+- `lepenseur explain doctor`
 """
 
 _BACKEND = """\
 # lepenseur backend
 
 lepenseur is **not** a Claude-backed agent. At runtime it is served by a
-**locally-hosted vLLM code model over the `acp` backend** — `daria` is the
+**locally-hosted vLLM reasoning model over the `acp` backend** — `daria` is the
 worked example of this runtime shape.
 
 ## Declaration (`culture.yaml`)
@@ -65,17 +66,16 @@ worked example of this runtime shape.
 agents:
 - suffix: lepenseur
   backend: acp
-  model: vllm-local/Qwen/Qwen3-Coder-Next
+  model: vllm-local/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4
   acp_command: [opencode, acp]
 ```
 
 ## Served model
 
-`Qwen/Qwen3-Coder-Next` — an 80B-total / 3B-active MoE code model. The official
-weights are BF16 (~160GB) and do **not** fit a 128GB DGX Spark, so the local
-deployment serves a **quantized variant** (FP8 ≈ ~80GB, or a community quant).
-The `model:` string names the family; the exact quantized repo is pinned at
-serve time.
+`nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4` — a 120B-total / 12B-active
+LatentMoE reasoning model in NVFP4, with a 1M-token context, running on DGX
+Spark. It emits a reasoning trace before its answer — which is exactly why it
+suits a deep thinker.
 
 ## Two prompt files
 
@@ -103,19 +103,38 @@ defaults when no `culture.yaml` is found (e.g. a wheel install).
 _LEARN = """\
 # lepenseur learn
 
-Prints a structured self-teaching prompt: purpose, the command map, mutation
-safety, the `--json` contract, and the exit-code policy. Enough shape for an
-agent to author its own usage skill without scraping `--help`. Supports
-`--json`.
+Prints a structured self-teaching prompt: purpose, the command map, the `--json`
+contract, and the exit-code policy. Enough shape for an agent to author its own
+usage skill without scraping `--help`. Supports `--json`.
 """
 
 _EXPLAIN = """\
 # lepenseur explain
 
 Resolves a topic path against the markdown catalog and prints the body. With no
-path it returns the root overview (same as `lepenseur explain lepenseur`). Unknown
-paths exit `1` with a `hint:` pointing back at the root. Supports `--json`,
-which wraps the markdown as `{"path": [...], "markdown": "..."}`.
+path it returns the root overview (same as `lepenseur explain lepenseur`).
+Unknown paths exit `1` with a `hint:` pointing back at the root. Supports
+`--json`, which wraps the markdown as `{"path": [...], "markdown": "..."}`.
+"""
+
+_OVERVIEW = """\
+# lepenseur overview
+
+A read-only descriptive snapshot of lepenseur the agent: its identity (from
+`culture.yaml`), its verb surface, and its narrow act surface (post/reply on
+chat, create files). `lepenseur cli overview` is the parallel snapshot of the
+CLI surface itself. Supports `--json` (`{"subject", "sections"}`). A stray path
+argument is accepted and ignored, so `overview <path>` never hard-fails.
+"""
+
+_DOCTOR = """\
+# lepenseur doctor
+
+Self-diagnosis. **Stub today**: what "doctor" means for a *non-doer* — a thinker
+that never executes — is an open design question (candidate checks: vLLM
+endpoint reachability, `culture.yaml`/`AGENTS.md` coherence, model-string
+validity). The stub returns one trivially-passing check so the JSON contract
+(`{"healthy", "checks"}`) holds. Supports `--json`.
 """
 
 ENTRIES: dict[tuple[str, ...], str] = {
@@ -125,4 +144,6 @@ ENTRIES: dict[tuple[str, ...], str] = {
     ("whoami",): _WHOAMI,
     ("learn",): _LEARN,
     ("explain",): _EXPLAIN,
+    ("overview",): _OVERVIEW,
+    ("doctor",): _DOCTOR,
 }
