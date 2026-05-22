@@ -61,6 +61,7 @@ def _argv_has_json(argv: list[str] | None) -> bool:
 def _build_parser() -> argparse.ArgumentParser:
     from lepenseur.cli._commands import explain as _explain_cmd
     from lepenseur.cli._commands import learn as _learn_cmd
+    from lepenseur.cli._commands import overview as _overview_cmd
     from lepenseur.cli._commands import whoami as _whoami_cmd
 
     parser = _LepenseurArgumentParser(
@@ -79,6 +80,7 @@ def _build_parser() -> argparse.ArgumentParser:
     _whoami_cmd.register(sub)
     _learn_cmd.register(sub)
     _explain_cmd.register(sub)
+    _overview_cmd.register(sub)
 
     return parser
 
