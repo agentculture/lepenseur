@@ -17,3 +17,6 @@ config:
 ignores:
   - "node_modules/**"
   - ".local/**"
+  # Internal planning artifacts (design specs, implementation plans) embed nested
+  # fenced code blocks that trigger markdownlint violations not worth reformatting.
+  - "docs/superpowers/**"
