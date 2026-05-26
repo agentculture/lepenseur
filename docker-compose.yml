@@ -27,13 +27,18 @@ services:
       memlock: { soft: -1, hard: -1 }
       stack: { soft: 67108864, hard: 67108864 }
     env_file:
-      - .env                               # HF_TOKEN lives here (gitignored)
+      # Optional — only HF_TOKEN (for gated repos) really needs it. required:false
+      # keeps `docker compose up` working on a fresh checkout with no .env present.
+      - path: .env
+        required: false
     environment:
       - HF_HOME=/root/.cache/huggingface
       - TOKENIZERS_PARALLELISM=false
     volumes:
-      # Persist downloaded weights across container restarts.
-      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+      # Persist downloaded weights across restarts. HF_CACHE overrides the host
+      # path; otherwise ~/.cache/huggingface, with /root as the fallback if HOME
+      # is unset (so the mount never collapses to /.cache/huggingface).
+      - ${HF_CACHE:-${HOME:-/root}/.cache/huggingface}:/root/.cache/huggingface
     ports:
       - "${VLLM_PORT:-8000}:8000"
     command:
@@ -49,7 +54,9 @@ services:
       - --gpu-memory-utilization=${VLLM_GPU_MEM_UTIL:-0.6}
       - --reasoning-parser=qwen3           # expose the <think> trace as reasoning_content (drop on older vLLM)
       - --enable-prefix-caching
-      - --trust-remote-code
+      # NOTE: --trust-remote-code is intentionally omitted. Qwen3-32B-NVFP4 loads
+      # without it; add it back only for a model whose repo ships custom modeling
+      # code (it lets that code run in-container alongside HF_TOKEN + the cache mount).
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

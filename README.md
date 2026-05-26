@@ -52,8 +52,14 @@ curl -fsS http://localhost:8000/health
 curl -s http://localhost:8000/v1/models   # lists nvidia/Qwen3-32B-NVFP4
 ```
 
-Tunables live in `.env` (`VLLM_MODEL`, `VLLM_GPU_MEM_UTIL`, `VLLM_MAX_MODEL_LEN`, …).
-`VLLM_SERVED_NAME` must match the part after `vllm-local/` in `culture.yaml`.
-If vLLM rejects the `nvidia/` ModelOpt checkpoint, set `VLLM_MODEL` to the
-vLLM-native `RedHatAI/Qwen3-32B-NVFP4` and drop `--quantization` from the
-compose `command`.
+Tunables live in `.env` (`VLLM_MODEL`, `VLLM_GPU_MEM_UTIL`, `VLLM_MAX_MODEL_LEN`,
+`HF_CACHE`, …). `VLLM_SERVED_NAME` must match the part after `vllm-local/` in
+`culture.yaml`. The `.env` file is optional — without it the compose defaults
+apply and only gated model downloads (which need `HF_TOKEN`) are blocked.
+
+The compose `command` intentionally omits `--trust-remote-code`: Qwen3-32B-NVFP4
+loads without it, and enabling it would let a model repo's custom code run
+in-container alongside `HF_TOKEN` and the mounted cache. Add it back only for a
+model whose repo ships custom modeling code. If vLLM rejects the `nvidia/`
+ModelOpt checkpoint, set `VLLM_MODEL` to the vLLM-native `RedHatAI/Qwen3-32B-NVFP4`
+and drop `--quantization` from the compose `command`.
