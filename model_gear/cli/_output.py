@@ -1,7 +1,7 @@
 """stdout / stderr helpers with a strict split.
 
 Rule: **results go to stdout, diagnostics and errors go to stderr.** Agents
-parsing lepenseur output can rely on this invariant. JSON mode routes structured
+parsing model-gear output can rely on this invariant. JSON mode routes structured
 payloads to the same streams — never mixes them.
 """
 
@@ -11,7 +11,7 @@ import json
 import sys
 from typing import Any, TextIO
 
-from lepenseur.cli._errors import LepenseurError
+from model_gear.cli._errors import ModelGearError
 
 
 def emit_result(data: Any, *, json_mode: bool, stream: TextIO | None = None) -> None:
@@ -32,8 +32,8 @@ def emit_result(data: Any, *, json_mode: bool, stream: TextIO | None = None) -> 
         s.write("\n")
 
 
-def emit_error(err: LepenseurError, *, json_mode: bool, stream: TextIO | None = None) -> None:
-    """Write a :class:`LepenseurError` to stderr.
+def emit_error(err: ModelGearError, *, json_mode: bool, stream: TextIO | None = None) -> None:
+    """Write a :class:`ModelGearError` to stderr.
 
     Text mode renders as two lines when a remediation is present::
 

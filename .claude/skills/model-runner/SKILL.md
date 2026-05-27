@@ -1,53 +1,50 @@
 ---
 name: model-runner
-description: Switch lepenseur's local vLLM runtime model and assess/benchmark it. Use when changing the served model, load-testing a candidate (e.g. an NVFP4 checkpoint), or producing the numbers for a per-model doc under docs/.
+description: Run, assess, and switch the local vLLM model via the `model` CLI (model-gear). Use when changing the served model, starting/stopping the server, load-testing a candidate (e.g. an NVFP4 checkpoint), or producing the numbers for a per-model doc under docs/.
 ---
 
 # model-runner
 
-lepenseur's runtime model is served by local vLLM via this repo's
-`docker-compose.yml` + `.env`. This skill automates the two recurring chores
-around that: **switching** which model is served, and **assessing** a served
-model (correctness probes + throughput) so a `docs/<model>.md` can be filled
-with real numbers.
+The local vLLM model is served by this repo's deployment (`docker-compose.yml` +
+`.env`, scaffolded into `~/.model-gear`). The **canonical implementation** is the
+`model` CLI (the `model-gear` package); this skill points a maintainer at it and
+the `scripts/model-runner.sh` shim just forwards to `model`.
 
-It is a maintainer convenience — lepenseur the *agent* does not run it
-(lepenseur only thinks and writes). It operates only on this repo's compose and
-`.env`; it reaches no path outside the repo.
+It is a maintainer convenience — the deployed agent (`lepenseur`) does not run it.
 
 ## When to use
 
-- Trying a different runtime model, or load-testing a candidate before adopting
-  it (the model card may recommend a different engine — verify it serves under
-  *our* vLLM image anyway).
-- Producing the benchmark block for a per-model doc (see
+- Starting/stopping the server or switching which model is served.
+- Load-testing a candidate before adopting it (a model card may bless a different
+  engine — verify it serves under *our* vLLM image anyway).
+- Producing the correctness/throughput blocks for a per-model doc (see
   [`docs/qwen3-32b-nvfp4.md`](../../../docs/qwen3-32b-nvfp4.md)).
 
 ## How to run
 
-One script, `scripts/model-runner.sh`:
+Use the `model` CLI directly (or `scripts/model-runner.sh <args>`, which `exec`s it):
 
 ```bash
+model init --apply                 # scaffold ~/.model-gear (compose + .env)
+
 # switch the served model (edits .env, recreates the container, waits for health).
 # DRY-RUN by default: prints the plan and changes nothing. Add --apply to execute.
-scripts/model-runner.sh switch mmangkad/Qwen3.6-27B-NVFP4 --max-model-len 32768   # preview
-scripts/model-runner.sh switch mmangkad/Qwen3.6-27B-NVFP4 --max-model-len 32768 --apply
+model switch mmangkad/Qwen3.6-27B-NVFP4 --max-model-len 32768          # preview
+model switch mmangkad/Qwen3.6-27B-NVFP4 --max-model-len 32768 --apply
 
-# assess whatever is currently served (host facts + correctness + throughput, as markdown)
-scripts/model-runner.sh assess
+model serve --apply                # start the server (alias: start)
+model stop --apply                 # stop + remove the container
 
-scripts/model-runner.sh status        # current model + container health (read-only)
-scripts/model-runner.sh down --apply  # stop + remove the container (dry-run without --apply)
+model assess                       # correctness probes + reasoning-trace field (markdown)
+model benchmark                    # decode throughput + prefill latency (markdown)
+model status                       # current model + container health (read-only)
 ```
 
-`switch` and `down` mutate (recreate/stop the container), so they are
-**dry-run by default** and require `--apply` to act — per CLAUDE.md's
-mutation-safety rule. `--port` defaults to the current `VLLM_PORT` in `.env`
-(then the compose default 8000). `assess` and `status` are read-only.
-
-`assess` emits a markdown block (model, `/health`, correctness on two fixed
-probes, the reasoning-trace field name, decode tok/s, prefill) ready to paste
-into a per-model doc. `_assess.py` is stdlib-only (no third-party deps).
+Write verbs (`switch`, `serve`, `stop`, `init`) are **dry-run by default** and
+require `--apply` — per CLAUDE.md's mutation-safety rule. `--port` defaults to
+`VLLM_PORT` in `.env` (then 8000). `assess`/`benchmark`/`status` are read-only.
+`assess` and `benchmark` each emit a markdown block ready to paste into a
+per-model doc; both are stdlib-only (no third-party deps).
 
 ## Notes
 

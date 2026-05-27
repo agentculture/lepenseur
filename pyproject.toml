@@ -1,7 +1,7 @@
 [project]
-name = "lepenseur"
-version = "0.4.0"
-description = "lepenseur — the local thinking agent of the Culture mesh."
+name = "model-gear"
+version = "0.5.0"
+description = "model-gear — run, assess, and switch the local vLLM model."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
@@ -16,18 +16,18 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/agentculture/lepenseur"
-Issues = "https://github.com/agentculture/lepenseur/issues"
+Homepage = "https://github.com/agentculture/model-gear"
+Issues = "https://github.com/agentculture/model-gear/issues"
 
 [project.scripts]
-lepenseur = "lepenseur.cli:main"
+model = "model_gear.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["lepenseur"]
+packages = ["model_gear"]
 
 [dependency-groups]
 dev = [
@@ -42,8 +42,8 @@ dev = [
 ]
 
 [tool.coverage.run]
-source = ["lepenseur"]
-omit = ["lepenseur/__pycache__/*"]
+source = ["model_gear"]
+omit = ["model_gear/__pycache__/*"]
 
 [tool.coverage.report]
 fail_under = 60
@@ -57,7 +57,7 @@ exclude_lines = [
 [tool.isort]
 profile = "black"
 line_length = 100
-known_first_party = ["lepenseur"]
+known_first_party = ["model_gear"]
 
 [tool.black]
 line-length = 100
@@ -65,7 +65,8 @@ target-version = ["py312"]
 
 [tool.bandit]
 exclude_dirs = ["tests"]
-skips = ["B101", "B404", "B603"]
+# B310: urllib.urlopen — all calls target the local vLLM endpoint (http://localhost).
+skips = ["B101", "B404", "B603", "B310"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

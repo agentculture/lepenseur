@@ -1,20 +1,25 @@
-# Local vLLM server for lepenseur's runtime model.
+# Local vLLM server — the deployment template model-gear scaffolds.
+#
+# `model init` copies this file (and env.example -> .env) into a deployment
+# directory (default ~/.model-gear). `model serve` / `model switch` then drive
+# `docker compose` in that directory.
 #
 # Serves an OpenAI-compatible API on :8000 that the Culture `acp` backend
-# (opencode's `vllm-local` provider) connects to. The served model name must
-# match the part after `vllm-local/` in culture.yaml's `model:` field.
+# (opencode's `vllm-local` provider) connects to — this is the model the
+# lepenseur agent consumes. The served model name must match the part after
+# `vllm-local/` in lepenseur's culture.yaml `model:` field.
 #
 # Quickstart:
-#   cp .env.example .env   # set HF_TOKEN if the model repo is gated
-#   docker login nvcr.io   # NGC API key; see README "Running the model locally"
-#   docker compose up -d
-#   docker compose logs -f vllm   # first run downloads ~18 GB of weights
+#   model init --apply            # scaffold ~/.model-gear (compose + .env)
+#   docker login nvcr.io          # NGC API key; see README "Running the model"
+#   model serve --apply           # first run downloads ~18 GB of weights
+#   model status                  # container state + /health
 #
 # Tuned for DGX Spark (GB10 Grace Blackwell, SM12.1, 128 GB unified memory).
 services:
   vllm:
     image: nvcr.io/nvidia/vllm:26.04-py3   # NGC ARM64/Blackwell build (see README to verify the current tag)
-    container_name: lepenseur-vllm
+    container_name: model-gear-vllm
     restart: unless-stopped
     # GPU access — requires the NVIDIA Container Toolkit on the host.
     deploy:
@@ -28,7 +33,7 @@ services:
       stack: { soft: 67108864, hard: 67108864 }
     env_file:
       # Optional — only HF_TOKEN (for gated repos) really needs it. required:false
-      # keeps `docker compose up` working on a fresh checkout with no .env present.
+      # keeps `docker compose up` working before `model init` writes a .env.
       - path: .env
         required: false
     environment:

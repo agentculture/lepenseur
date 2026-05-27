@@ -1,8 +1,8 @@
-"""LepenseurError and exit-code policy.
+"""ModelGearError and exit-code policy.
 
-Every failure inside lepenseur raises :class:`LepenseurError`. The top-level
-``main()`` catches it, formats via :mod:`lepenseur.cli._output`, and exits with
-:attr:`LepenseurError.code`. This guarantees:
+Every failure inside model-gear raises :class:`ModelGearError`. The top-level
+``main()`` catches it, formats via :mod:`model_gear.cli._output`, and exits with
+:attr:`ModelGearError.code`. This guarantees:
 
 * no Python traceback leaks to stderr (agent-first error contract);
 * every error has a structured shape ``{code, message, remediation}``;
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Exit-code policy. Documented in ``lepenseur learn`` output.
+# Exit-code policy. Documented in ``model learn`` output.
 # 0      = success
 # 1      = user-input error (bad flag, missing required arg, unknown path)
 # 2      = environment / setup error (tool not installed, file unreadable)
@@ -24,8 +24,8 @@ EXIT_ENV_ERROR = 2
 
 
 @dataclass
-class LepenseurError(Exception):
-    """Structured error raised within lepenseur; carries a remediation hint for agents."""
+class ModelGearError(Exception):
+    """Structured error raised within model-gear; carries a remediation hint for agents."""
 
     code: int
     message: str
