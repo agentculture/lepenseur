@@ -91,5 +91,5 @@ Run the same methodology used for the 32B (see
 **Pending the load-test.** Until the live numbers above exist, **keep
 `nvidia/Qwen3-32B-NVFP4`** as the runtime model — it is verified end-to-end on
 this hardware. Revisit a switch only if the 27B load-test (issue #6) shows it
-loads cleanly under vLLM *and* offers a worthwhile trade (faster decode at ~20B,
+loads cleanly under vLLM _and_ offers a worthwhile trade (faster decode at ~20B,
 larger usable context) without the multimodal/SGLang caveats biting.
