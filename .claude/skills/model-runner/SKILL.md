@@ -28,15 +28,22 @@ It is a maintainer convenience — lepenseur the *agent* does not run it
 One script, `scripts/model-runner.sh`:
 
 ```bash
-# switch the served model (edits .env, recreates the container, waits for health)
-scripts/model-runner.sh switch mmangkad/Qwen3.6-27B-NVFP4 --port 8001 --max-model-len 32768
+# switch the served model (edits .env, recreates the container, waits for health).
+# DRY-RUN by default: prints the plan and changes nothing. Add --apply to execute.
+scripts/model-runner.sh switch mmangkad/Qwen3.6-27B-NVFP4 --max-model-len 32768   # preview
+scripts/model-runner.sh switch mmangkad/Qwen3.6-27B-NVFP4 --max-model-len 32768 --apply
 
 # assess whatever is currently served (host facts + correctness + throughput, as markdown)
-scripts/model-runner.sh assess --port 8001
+scripts/model-runner.sh assess
 
-scripts/model-runner.sh status   # current model + container health
-scripts/model-runner.sh down      # stop + remove the container
+scripts/model-runner.sh status        # current model + container health (read-only)
+scripts/model-runner.sh down --apply  # stop + remove the container (dry-run without --apply)
 ```
+
+`switch` and `down` mutate (recreate/stop the container), so they are
+**dry-run by default** and require `--apply` to act — per CLAUDE.md's
+mutation-safety rule. `--port` defaults to the current `VLLM_PORT` in `.env`
+(then the compose default 8000). `assess` and `status` are read-only.
 
 `assess` emits a markdown block (model, `/health`, correctness on two fixed
 probes, the reasoning-trace field name, decode tok/s, prefill) ready to paste

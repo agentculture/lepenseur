@@ -61,17 +61,30 @@ _wait_health() {  # _wait_health PORT
 cmd_switch() {
   [ $# -ge 1 ] || die "usage: switch MODEL [--port P] [--max-model-len N] [--served-name N] [--gpu-mem-util F]"
   local model="$1"; shift
-  local port="8001" maxlen="32768" served="" gpu="0.6"
+  # Default port follows the existing .env (then the compose default 8000), so
+  # switch/assess/compose stay consistent unless --port is given explicitly.
+  local port maxlen="32768" served="" gpu="0.6" apply=0
+  port="$(_get_env VLLM_PORT 8000)"
   while [ $# -gt 0 ]; do
     case "$1" in
       --port) port="$2"; shift 2;;
       --max-model-len) maxlen="$2"; shift 2;;
       --served-name) served="$2"; shift 2;;
       --gpu-mem-util) gpu="$2"; shift 2;;
+      --apply) apply=1; shift;;
       *) die "unknown flag: $1";;
     esac
   done
   [ -n "$served" ] || served="$model"
+  if [ "$apply" -eq 0 ]; then
+    # Safe-by-default (CLAUDE.md mutation rule): show the plan, change nothing.
+    echo "DRY RUN — would update $ENV_FILE:"
+    printf '  %s\n' "VLLM_MODEL=$model" "VLLM_SERVED_NAME=$served" \
+      "VLLM_PORT=$port" "VLLM_MAX_MODEL_LEN=$maxlen" "VLLM_GPU_MEM_UTIL=$gpu"
+    echo "  then: (cd $ROOT && docker compose down && docker compose up -d) + wait for health on :$port"
+    echo "Re-run with --apply to execute."
+    return 0
+  fi
   echo ">> switching to $model (port=$port max_model_len=$maxlen served-name=$served gpu-mem-util=$gpu)"
   _set_env VLLM_MODEL "$model"
   _set_env VLLM_SERVED_NAME "$served"
@@ -113,7 +126,13 @@ cmd_status() {
   curl -fsS -m 3 "http://localhost:$port/health" >/dev/null 2>&1 && echo "health: OK (:$port)" || echo "health: not responding (:$port)"
 }
 
-cmd_down() { ( cd "$ROOT" && docker compose down ); }
+cmd_down() {
+  if [ "${1:-}" != "--apply" ]; then
+    echo "DRY RUN — would run: (cd $ROOT && docker compose down). Re-run with --apply."
+    return 0
+  fi
+  ( cd "$ROOT" && docker compose down )
+}
 
 case "${1:-}" in
   switch) shift; cmd_switch "$@";;

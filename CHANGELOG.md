@@ -11,7 +11,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `model-runner` skill (local, not vendored): `switch` the local vLLM runtime
   model and `assess`/benchmark it (stdlib `_assess.py` for correctness +
   throughput, host-side facts via the wrapper). Drives this repo's compose +
-  `.env`; documented in CLAUDE.md and README.
+  `.env`; documented in CLAUDE.md and README. Mutating verbs (`switch`, `down`)
+  are dry-run by default and require `--apply` (CLAUDE.md mutation-safety rule);
+  `--port` defaults to `.env`'s `VLLM_PORT` (then 8000).
 
 ### Changed
 

@@ -42,8 +42,9 @@ instantiates, loads weights, and serves with the same compose flags as the 32B
 
 ```bash
 .claude/skills/model-runner/scripts/model-runner.sh \
-  switch mmangkad/Qwen3.6-27B-NVFP4 --port 8001 --max-model-len 32768
-# (or edit .env: VLLM_MODEL / VLLM_SERVED_NAME / VLLM_PORT, then docker compose up -d)
+  switch mmangkad/Qwen3.6-27B-NVFP4 --port 8001 --max-model-len 32768 --apply
+# (switch is dry-run without --apply; or edit .env: VLLM_MODEL / VLLM_SERVED_NAME
+#  / VLLM_PORT, then docker compose up -d)
 ```
 
 `VLLM_SERVED_NAME` must match the part after `vllm-local/` in `culture.yaml`.

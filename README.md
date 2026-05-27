@@ -76,5 +76,6 @@ results, and caveats:
   current vLLM image but is slower on decode, so the 32B stays.
 
 Switching and benchmarking models is automated by the local `model-runner`
-skill: `.claude/skills/model-runner/scripts/model-runner.sh switch <model>` then
-`… assess`. The `assess` output is the benchmark block in each per-model doc.
+skill: `.claude/skills/model-runner/scripts/model-runner.sh switch <model> --apply`
+then `… assess`. `switch` is dry-run without `--apply`; the `assess` output is the
+benchmark block in each per-model doc.

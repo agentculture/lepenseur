@@ -109,7 +109,11 @@ def main() -> int:
         return 1
 
     _, models = _get(url, "/v1/models")
-    served = models["data"][0]
+    data = models.get("data") if isinstance(models, dict) else None
+    if not data:
+        print(f"FAIL: /v1/models returned no models at {url} (got: {models!r})", file=sys.stderr)
+        return 1
+    served = data[0]
     model = args.model or served["id"]
     max_len = served.get("max_model_len")
 
