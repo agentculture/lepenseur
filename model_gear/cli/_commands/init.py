@@ -36,19 +36,18 @@ def cmd_init(args: argparse.Namespace) -> int:
                 lines.append(f"  {name}{note}")
             lines.append("Re-run with --apply to write.")
             emit_result("\n".join(lines), json_mode=False)
-        return 0
-
-    written = _compose.write_scaffold(target, force=args.force)
-    result = {"scaffolded": str(target), "files": [p.name for p in written]}
-    if json_mode:
-        emit_result(result, json_mode=True)
     else:
-        emit_result(
-            f">> scaffolded {target}:\n"
-            + "\n".join(f"  {p.name}" for p in written)
-            + "\n>> next: docker login nvcr.io && model serve --apply",
-            json_mode=False,
-        )
+        written = _compose.write_scaffold(target, force=args.force)
+        result = {"scaffolded": str(target), "files": [p.name for p in written]}
+        if json_mode:
+            emit_result(result, json_mode=True)
+        else:
+            emit_result(
+                f">> scaffolded {target}:\n"
+                + "\n".join(f"  {p.name}" for p in written)
+                + "\n>> next: docker login nvcr.io && model serve --apply",
+                json_mode=False,
+            )
     return 0
 
 

@@ -31,19 +31,17 @@ def cmd_serve(args: argparse.Namespace) -> int:
                 f"then wait for health on :{port}.\nRe-run with --apply to execute.",
                 json_mode=False,
             )
-        return 0
-
-    emit_diagnostic(f">> starting the vLLM server in {deploy_dir}")
-    _runtime_ops.compose_check(_compose.compose_up_detached(deploy_dir), "docker compose up -d")
-    _health.wait_health(port)
-
-    result = {"serving": True, "port": port, "deployment_dir": str(deploy_dir)}
-    if json_mode:
-        emit_result(result, json_mode=True)
     else:
-        emit_result(
-            f">> serving on :{port}. assess with: model assess --port {port}", json_mode=False
-        )
+        emit_diagnostic(f">> starting the vLLM server in {deploy_dir}")
+        _runtime_ops.compose_check(_compose.compose_up_detached(deploy_dir), "docker compose up -d")
+        _health.wait_health(port)
+        result = {"serving": True, "port": port, "deployment_dir": str(deploy_dir)}
+        if json_mode:
+            emit_result(result, json_mode=True)
+        else:
+            emit_result(
+                f">> serving on :{port}. assess with: model assess --port {port}", json_mode=False
+            )
     return 0
 
 

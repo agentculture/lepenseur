@@ -17,10 +17,12 @@ from __future__ import annotations
 import contextlib
 import json
 import time
-import urllib.error
 import urllib.request
 
 from model_gear.cli._errors import EXIT_ENV_ERROR, ModelGearError
+
+# urllib.error.URLError is a subclass of OSError, so `except OSError` covers
+# connection failures, timeouts, and HTTPError without listing it redundantly.
 
 
 @contextlib.contextmanager
@@ -35,7 +37,7 @@ def _api_errors(what: str):
         yield
     except ModelGearError:
         raise
-    except (urllib.error.URLError, OSError) as exc:
+    except OSError as exc:
         raise ModelGearError(
             code=EXIT_ENV_ERROR,
             message=f"{what} failed: {exc}",
@@ -67,12 +69,12 @@ def _post(url: str, payload: dict, timeout: int = 300) -> dict:
         data=data,
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 - local URL
+    with urllib.request.urlopen(req, timeout=timeout) as r:  # local endpoint only
         return json.load(r)
 
 
 def _get(url: str, path: str, timeout: int = 10):
-    with urllib.request.urlopen(url + path, timeout=timeout) as r:  # noqa: S310 - local URL
+    with urllib.request.urlopen(url + path, timeout=timeout) as r:  # local endpoint only
         if r.headers.get("content-type", "").startswith("application/json"):
             return r.status, json.load(r)
         return r.status, r.read().decode()
@@ -95,7 +97,7 @@ def health_status(url: str) -> int:
     """Return the ``/health`` status code, or raise if the endpoint is unreachable."""
     try:
         status, _ = _get(url, "/health")
-    except (urllib.error.URLError, OSError) as exc:
+    except OSError as exc:
         raise ModelGearError(
             code=EXIT_ENV_ERROR,
             message=f"/health unreachable at {url} ({exc})",

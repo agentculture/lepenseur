@@ -48,23 +48,52 @@ def _check(id_: str, passed: bool, severity: str, message: str, remediation: str
     }
 
 
-def _diagnose(compose_dir: str | None = None) -> dict[str, object]:
-    checks: list[dict] = []
-
-    docker_ok = _compose.docker_available()
-    checks.append(
-        _check(
-            "docker_available",
-            docker_ok,
-            "error",
-            (
-                "docker + docker compose are available"
-                if docker_ok
-                else "docker / docker compose not found"
-            ),
-            "" if docker_ok else "install Docker + the NVIDIA Container Toolkit",
-        )
+def _docker_check() -> dict:
+    ok = _compose.docker_available()
+    return _check(
+        "docker_available",
+        ok,
+        "error",
+        "docker + docker compose are available" if ok else "docker / docker compose not found",
+        "" if ok else "install Docker + the NVIDIA Container Toolkit",
     )
+
+
+def _env_coherence_check(env_path) -> dict:
+    served = _env.read_env(env_path, "VLLM_SERVED_NAME")
+    expected = _culture_model_tail()
+    if not served:
+        return _check(
+            "env_coherence",
+            False,
+            "warn",
+            "VLLM_SERVED_NAME is not set in .env",
+            "set it, or run 'model switch <model> --apply'",
+        )
+    if expected and served != expected:
+        return _check(
+            "env_coherence",
+            False,
+            "warn",
+            f"VLLM_SERVED_NAME ({served}) != culture.yaml model tail ({expected})",
+            "align them so the acp vllm-local provider resolves the model",
+        )
+    return _check("env_coherence", True, "info", f"VLLM_SERVED_NAME = {served}")
+
+
+def _health_check(port: int) -> dict:
+    healthy = _health.is_healthy(port)
+    return _check(
+        "health_reachable",
+        healthy,
+        "info",
+        f"/health responding on :{port}" if healthy else f"/health not responding on :{port}",
+        "" if healthy else "start the server with 'model serve --apply'",
+    )
+
+
+def _diagnose(compose_dir: str | None = None) -> dict[str, object]:
+    checks: list[dict] = [_docker_check()]
 
     deploy_dir: Path | None = None
     try:
@@ -78,65 +107,35 @@ def _diagnose(compose_dir: str | None = None) -> dict[str, object]:
     port = 8000
     if deploy_dir is not None:
         env_path = deploy_dir / _compose.ENV_FILE
-        served = _env.read_env(env_path, "VLLM_SERVED_NAME")
-        expected = _culture_model_tail()
-        if not served:
-            checks.append(
-                _check(
-                    "env_coherence",
-                    False,
-                    "warn",
-                    "VLLM_SERVED_NAME is not set in .env",
-                    "set it, or run 'model switch <model> --apply'",
-                )
-            )
-        elif expected and served != expected:
-            checks.append(
-                _check(
-                    "env_coherence",
-                    False,
-                    "warn",
-                    f"VLLM_SERVED_NAME ({served}) != culture.yaml model tail ({expected})",
-                    "align them so the acp vllm-local provider resolves the model",
-                )
-            )
-        else:
-            checks.append(_check("env_coherence", True, "info", f"VLLM_SERVED_NAME = {served}"))
+        checks.append(_env_coherence_check(env_path))
         port = _env.parse_port(_env.read_env(env_path, "VLLM_PORT", "8000"))
 
-    healthy = _health.is_healthy(port)
-    checks.append(
-        _check(
-            "health_reachable",
-            healthy,
-            "info",
-            f"/health responding on :{port}" if healthy else f"/health not responding on :{port}",
-            "" if healthy else "start the server with 'model serve --apply'",
-        )
-    )
+    checks.append(_health_check(port))
 
     # Only error-severity failures make the run unhealthy.
     healthy_overall = all(c["passed"] for c in checks if c["severity"] == "error")
     return {"healthy": healthy_overall, "checks": checks}
 
 
+def _render_text(report: dict) -> str:
+    status = "healthy" if report["healthy"] else "unhealthy"
+    lines = [f"model doctor: {status}", ""]
+    for check in report["checks"]:
+        mark = (
+            "ok"
+            if check["passed"]
+            else ("FAIL" if check["severity"] == "error" else check["severity"])
+        )
+        lines.append(f"[{mark}] {check['id']}: {check['message']}")
+        if not check["passed"] and check["remediation"]:
+            lines.append(f"  hint: {check['remediation']}")
+    return "\n".join(lines)
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     report = _diagnose(getattr(args, "compose_dir", None))
     json_mode = bool(getattr(args, "json", False))
-    if json_mode:
-        emit_result(report, json_mode=True)
-    else:
-        status = "healthy" if report["healthy"] else "unhealthy"
-        lines = [f"model doctor: {status}", ""]
-        for check in report["checks"]:
-            if check["passed"]:
-                mark = "ok"
-            else:
-                mark = "FAIL" if check["severity"] == "error" else check["severity"]
-            lines.append(f"[{mark}] {check['id']}: {check['message']}")
-            if not check["passed"] and check["remediation"]:
-                lines.append(f"  hint: {check['remediation']}")
-        emit_result("\n".join(lines), json_mode=False)
+    emit_result(report if json_mode else _render_text(report), json_mode=json_mode)
     return 0 if report["healthy"] else 1
 
 

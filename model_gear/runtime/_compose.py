@@ -9,7 +9,7 @@ shell) — the bandit ``B404``/``B603`` skips in ``pyproject.toml`` cover them.
 from __future__ import annotations
 
 import os
-import subprocess  # noqa: S404 - fixed argv lists, never shell=True
+import subprocess  # fixed argv lists only, never shell=True
 from importlib.resources import files
 from pathlib import Path
 
@@ -101,7 +101,7 @@ def write_scaffold(target: os.PathLike | str, *, force: bool) -> list[Path]:
 def _run(argv: list[str], *, cwd: str | None = None, timeout: int | None = None):
     """Run a command that MUST exist (docker); raise ENV_ERROR if it doesn't."""
     try:
-        return subprocess.run(  # noqa: S603 - fixed argv, no shell
+        return subprocess.run(  # fixed argv, no shell
             argv, cwd=cwd, capture_output=True, text=True, check=False, timeout=timeout
         )
     except OSError as exc:
@@ -115,7 +115,7 @@ def _run(argv: list[str], *, cwd: str | None = None, timeout: int | None = None)
 def _probe(argv: list[str], *, timeout: int = 10):
     """Run a best-effort command; return the result or ``None`` if it can't run."""
     try:
-        return subprocess.run(  # noqa: S603 - fixed argv, no shell
+        return subprocess.run(  # fixed argv, no shell
             argv, capture_output=True, text=True, check=False, timeout=timeout
         )
     except (OSError, subprocess.TimeoutExpired):

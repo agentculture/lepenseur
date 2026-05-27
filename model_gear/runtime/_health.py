@@ -7,7 +7,6 @@ Ported from ``_wait_health`` in the original ``model-runner.sh``: poll every
 from __future__ import annotations
 
 import time
-import urllib.error
 import urllib.request
 
 from model_gear.cli._errors import EXIT_ENV_ERROR, ModelGearError
@@ -19,9 +18,9 @@ def is_healthy(port: int, timeout: float = 3.0) -> bool:
     """Non-blocking: True if ``/health`` returns a 2xx within ``timeout``."""
     url = f"http://localhost:{port}/health"
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:  # noqa: S310 - local URL
+        with urllib.request.urlopen(url, timeout=timeout) as r:  # local endpoint only
             return 200 <= r.status < 300
-    except (urllib.error.URLError, OSError):
+    except OSError:  # URLError subclasses OSError
         return False
 
 

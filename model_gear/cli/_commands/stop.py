@@ -26,16 +26,14 @@ def cmd_stop(args: argparse.Namespace) -> int:
                 "Re-run with --apply to execute.",
                 json_mode=False,
             )
-        return 0
-
-    emit_diagnostic(f">> stopping the vLLM server in {deploy_dir}")
-    _runtime_ops.compose_check(_compose.compose_down(deploy_dir), "docker compose down")
-
-    result = {"stopped": True, "deployment_dir": str(deploy_dir)}
-    if json_mode:
-        emit_result(result, json_mode=True)
     else:
-        emit_result(">> stopped.", json_mode=False)
+        emit_diagnostic(f">> stopping the vLLM server in {deploy_dir}")
+        _runtime_ops.compose_check(_compose.compose_down(deploy_dir), "docker compose down")
+        result = {"stopped": True, "deployment_dir": str(deploy_dir)}
+        if json_mode:
+            emit_result(result, json_mode=True)
+        else:
+            emit_result(">> stopped.", json_mode=False)
     return 0
 
 

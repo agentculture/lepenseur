@@ -42,28 +42,26 @@ def cmd_switch(args: argparse.Namespace) -> int:
             )
             lines.append("Re-run with --apply to execute.")
             emit_result("\n".join(lines), json_mode=False)
-        return 0
-
-    emit_diagnostic(
-        f">> switching to {args.model} (port={port} max_model_len={args.max_model_len} "
-        f"served-name={served} gpu-mem-util={args.gpu_mem_util})"
-    )
-    for key, value in plan.items():
-        _env.set_env(env_path, key, value)
-    _runtime_ops.compose_check(_compose.compose_down(deploy_dir), "docker compose down")
-    _runtime_ops.compose_check(_compose.compose_up_detached(deploy_dir), "docker compose up -d")
-    _health.wait_health(port)
-
-    result = {
-        "switched": args.model,
-        "served_name": served,
-        "port": port,
-        "deployment_dir": str(deploy_dir),
-    }
-    if json_mode:
-        emit_result(result, json_mode=True)
     else:
-        emit_result(f">> done. assess with: model assess --port {port}", json_mode=False)
+        emit_diagnostic(
+            f">> switching to {args.model} (port={port} max_model_len={args.max_model_len} "
+            f"served-name={served} gpu-mem-util={args.gpu_mem_util})"
+        )
+        for key, value in plan.items():
+            _env.set_env(env_path, key, value)
+        _runtime_ops.compose_check(_compose.compose_down(deploy_dir), "docker compose down")
+        _runtime_ops.compose_check(_compose.compose_up_detached(deploy_dir), "docker compose up -d")
+        _health.wait_health(port)
+        result = {
+            "switched": args.model,
+            "served_name": served,
+            "port": port,
+            "deployment_dir": str(deploy_dir),
+        }
+        if json_mode:
+            emit_result(result, json_mode=True)
+        else:
+            emit_result(f">> done. assess with: model assess --port {port}", json_mode=False)
     return 0
 
 
