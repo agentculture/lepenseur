@@ -1,4 +1,4 @@
-"""Tests for lepenseur's introspection verbs: overview, cli overview, doctor."""
+"""Tests for model-gear's introspection verbs: overview, cli overview, doctor."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from lepenseur.cli import main
+from model_gear.cli import main
 
 # --- overview -------------------------------------------------------------
 
@@ -15,17 +15,34 @@ def test_overview_text(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(["overview"])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "# lepenseur" in out
-    assert "Act surface" in out
+    assert "# model-gear" in out
+    assert "Currently served" in out
+    assert "Verbs" in out
 
 
 def test_overview_json_shape(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(["overview", "--json"])
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["subject"] == "lepenseur"
+    assert payload["subject"] == "model-gear"
     assert isinstance(payload["sections"], list)
     assert payload["sections"]
+
+
+def test_overview_current_only(capsys: pytest.CaptureFixture[str]) -> None:
+    rc = main(["overview", "--current", "--json"])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    titles = [s["title"] for s in payload["sections"]]
+    assert titles == ["Currently served"]
+
+
+def test_overview_list_only(capsys: pytest.CaptureFixture[str]) -> None:
+    rc = main(["overview", "--list", "--json"])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    titles = [s["title"] for s in payload["sections"]]
+    assert titles == ["Candidate models (docs/)"]
 
 
 def test_overview_graceful_on_bad_path(capsys: pytest.CaptureFixture[str]) -> None:
@@ -41,14 +58,14 @@ def test_overview_graceful_on_bad_path(capsys: pytest.CaptureFixture[str]) -> No
 def test_cli_overview_text(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(["cli", "overview"])
     assert rc == 0
-    assert "# lepenseur cli" in capsys.readouterr().out
+    assert "# model cli" in capsys.readouterr().out
 
 
 def test_cli_overview_json_shape(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(["cli", "overview", "--json"])
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["subject"] == "lepenseur cli"
+    assert payload["subject"] == "model cli"
     assert isinstance(payload["sections"], list)
 
 
@@ -71,18 +88,19 @@ def test_cli_overview_unknown_flag_structured_error(
     assert "hint:" in err
 
 
-# --- doctor (stub) --------------------------------------------------------
+# --- doctor ---------------------------------------------------------------
 
 
 def test_doctor_text(capsys: pytest.CaptureFixture[str]) -> None:
+    # Offline fixture → docker unavailable → unhealthy → exit 1.
     rc = main(["doctor"])
-    assert rc == 0
-    assert "lepenseur doctor" in capsys.readouterr().out
+    assert rc == 1
+    assert "model doctor" in capsys.readouterr().out
 
 
 def test_doctor_json_shape(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(["doctor", "--json"])
-    assert rc == 0
+    assert rc == 1
     payload = json.loads(capsys.readouterr().out)
     assert isinstance(payload["healthy"], bool)
     assert isinstance(payload["checks"], list)

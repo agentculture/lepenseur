@@ -1,3 +1,6 @@
+# The deployed agent is `lepenseur`; the repo/tool serving its model is
+# `model-gear`. Repo name != agent name. `model:` must match VLLM_SERVED_NAME in
+# the deployment .env (the part after `vllm-local/`); `model doctor` checks this.
 agents:
 - suffix: lepenseur
   backend: acp

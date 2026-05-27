@@ -1,8 +1,8 @@
 # Candidate model: `mmangkad/Qwen3.6-27B-NVFP4`
 
 A candidate alternative runtime model. **Load-tested live on DGX Spark (GB10),
-2026-05-27** — it loads and serves cleanly under the vLLM image lepenseur
-already runs. Tracked by [issue #6](https://github.com/agentculture/lepenseur/issues/6).
+2026-05-27** — it loads and serves cleanly under the vLLM image model-gear
+already runs. Tracked by [issue #6](https://github.com/agentculture/model-gear/issues/6).
 
 Source: <https://huggingface.co/mmangkad/Qwen3.6-27B-NVFP4> — public, Apache-2.0.
 
@@ -26,7 +26,7 @@ Source: <https://huggingface.co/mmangkad/Qwen3.6-27B-NVFP4> — public, Apache-2
 The pre-flight check (query the running engine's registry):
 
 ```text
-$ docker exec lepenseur-vllm python3 -c \
+$ docker exec model-gear-vllm python3 -c \
   "from vllm.model_executor.models.registry import ModelRegistry; \
    print('Qwen3_5ForConditionalGeneration' in ModelRegistry.get_supported_archs())"
 True
@@ -41,14 +41,14 @@ instantiates, loads weights, and serves with the same compose flags as the 32B
 ## How to run (same compose, model override)
 
 ```bash
-.claude/skills/model-runner/scripts/model-runner.sh \
-  switch mmangkad/Qwen3.6-27B-NVFP4 --port 8001 --max-model-len 32768 --apply
-# (switch is dry-run without --apply; or edit .env: VLLM_MODEL / VLLM_SERVED_NAME
-#  / VLLM_PORT, then docker compose up -d)
+model switch mmangkad/Qwen3.6-27B-NVFP4 --port 8001 --max-model-len 32768 --apply
+# (switch is dry-run without --apply; it rewrites VLLM_MODEL / VLLM_SERVED_NAME /
+#  VLLM_PORT in .env, then recreates the container and waits for /health)
 ```
 
-`VLLM_SERVED_NAME` must match the part after `vllm-local/` in `culture.yaml`.
-Memory note: native context is 256K; the KV cache at that length is large, so
+`VLLM_SERVED_NAME` must match the part after `vllm-local/` in `culture.yaml`
+(`model doctor` checks this). Memory note: native context is 256K; the KV cache
+at that length is large, so
 keep `VLLM_MAX_MODEL_LEN=32768` for a first load and raise only with headroom.
 
 ## Caveats — validated during the load-test
@@ -69,8 +69,8 @@ keep `VLLM_MAX_MODEL_LEN=32768` for a first load and raise only with headroom.
 ## Benchmark — 2026-05-27, DGX Spark (GB10)
 
 Image `nvcr.io/nvidia/vllm:26.04-py3`, engine `0.19.0+...nv26.04`. Served on
-`:8001` via `model-runner assess`. Engine init (download cached) ~159 s; KV
-cache 38.55 GiB allocated.
+`:8001` via `model assess` / `model benchmark`. Engine init (download cached)
+~159 s; KV cache 38.55 GiB allocated.
 
 | Property | Value |
 |---|---|
@@ -103,5 +103,5 @@ thinker, that trade does not pay off today.
 
 Switch only if a concrete need appears that the 32B cannot meet: a **much larger
 context** (256K native vs 32K/131K-YaRN) or **multimodal/vision** input. Re-run
-`model-runner assess` after any vLLM image bump — the Mamba/NVFP4 paths are young
-and likely to get faster.
+`model assess` / `model benchmark` after any vLLM image bump — the Mamba/NVFP4
+paths are young and likely to get faster.

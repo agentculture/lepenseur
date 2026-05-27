@@ -4,6 +4,52 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-27
+
+Redesigned the repo around **running, assessing, and switching the local vLLM
+model**. The model-ops logic that lived in the `model-runner` *skill* is now a
+first-class CLI. lepenseur is still the deployed agent that consumes the served
+model; model-gear is the tool that runs it.
+
+### Added
+
+- **Model-ops verbs** on the `model` CLI: `switch <model>`, `serve` (alias
+  `start`) / `stop`, `status`, `assess` (correctness probes), `benchmark`
+  (decode throughput + prefill), and `init` (scaffold a deployment dir). Write
+  verbs (`switch`/`serve`/`stop`/`init`) are **dry-run by default** and require
+  `--apply` (mutation-safety rule).
+- **Scaffold-based deployment.** `docker-compose.yml` + `env.example` ship as
+  packaged templates under `model_gear/templates/`; `model init` materialises
+  them into `~/.model-gear` (default), a `TARGET`, or the local folder. Every
+  model-ops verb resolves the deployment dir via `--compose-dir` →
+  `$MODEL_GEAR_DIR` → `~/.model-gear`.
+- Ported runtime modules (`model_gear/runtime/` + `model_gear/assess.py`),
+  stdlib-only (`urllib`, fixed-argv `subprocess`), with full unit tests.
+- `model overview` now folds in the currently-served model and the
+  candidate-model list, filterable with `--current` / `--list`.
+
+### Changed
+
+- **PyPI distribution renamed `lepenseur` → `model-gear`; binary `lepenseur` →
+  `model`; Python package `lepenseur` → `model_gear`.** Error class
+  `LepenseurError` → `ModelGearError`. The `lepenseur` console script is removed.
+- Agent-first verbs reframed for the tool: `whoami` reports tool/machine/served
+  model/container health/agent; `learn` teaches the model-ops surface; `explain`
+  catalog rewritten (`switch`/`assess`/`backend`/`models`/…).
+- `doctor` is now **real** — checks docker availability, deployment scaffold,
+  `.env` ↔ `culture.yaml` coherence, and `/health` reachability (a down model is
+  a warning, not a failure).
+- The `model-runner` skill is now a thin shim that `exec`s `model`; its
+  `_assess.py` was removed (the logic lives in `model_gear/assess.py`).
+- `AGENTS.md` / `culture.yaml` clarified: they describe the deployed `lepenseur`
+  agent, not the repo. README + CLAUDE.md reoriented around model-gear.
+
+### Fixed
+
+- **BREAKING:** the vLLM container is renamed `lepenseur-vllm` → `model-gear-vllm`.
+  A box running the old container must `docker compose down` under the old name,
+  then `model init --apply` + `model serve --apply`.
+
 ## [0.4.0] - 2026-05-27
 
 ### Added

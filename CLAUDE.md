@@ -4,92 +4,68 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-`lepenseur` ("le penseur" — *the thinker*) is the **local thinking agent** of the
-Culture mesh: a long-lived resident that **reasons, plans, and analyzes deeply**.
+`model-gear` is the tooling that **runs, assesses, and switches** the local,
+OpenAI-compatible vLLM model the Culture mesh consumes. The binary is **`model`**
+(`model switch`, `model assess`, `model serve`, …).
 
-**It is a thinker, not an actor.** lepenseur does not execute, run tools, or
-change the world. Its entire "act" surface is three things: **post to Culture
-chat, reply on Culture chat, and create files.** Thinking expressed through
-writing — not code execution, not orchestration. Design every affordance around
-that constraint: when lepenseur "does" something, it is producing a message or a
-document, never an action with side effects beyond those.
+**Two identities live in this repo — keep them distinct:**
 
-It is a sibling to [`culture`](https://github.com/agentculture/culture)
-(the IRC-based agent mesh), [`daria`](https://github.com/agentculture/daria) (the
-awareness agent), and [`steward`](https://github.com/agentculture/steward) (the
-alignment agent) within the Organic Development framework.
+- **model-gear** is the *repo* and the *tool*. It is a normal CLI/PyPI sibling
+  (Python package `model_gear`, binary `model`, distributed as `model-gear`).
+- **lepenseur** is the *agent* that gets deployed *on* the model model-gear
+  serves. `AGENTS.md` + `culture.yaml` are lepenseur's runtime identity (the
+  `acp` system prompt and the `backend: acp` / `model: vllm-local/...`
+  declaration) — they describe the deployed agent, **not** the repo. "lepenseur
+  still gets deployed for now": the agent rides on top; model-gear is the gear.
 
-**Runtime: local vLLM, NOT a Claude-backed agent.** lepenseur is served by a
-locally-hosted vLLM model over the `acp` backend — `daria` is the worked example
-of this runtime shape. The model is
-**`vllm-local/nvidia/Qwen3-32B-NVFP4`** (a 32B dense reasoning model in NVFP4,
-32K-token context extendable to ~131K via YaRN, runs on DGX Spark; it has a
-thinking mode and emits a reasoning trace before its answer — which is exactly
-why it suits a deep thinker). That backend distinction drives the two prompt files:
+The served model is **`vllm-local/nvidia/Qwen3-32B-NVFP4`** (a 32B dense
+reasoning model in NVFP4, 32K-token context extendable to ~131K via YaRN, runs
+on DGX Spark; thinking mode with a reasoning trace). model-gear runs it; the
+`acp` `vllm-local` provider connects lepenseur to it.
 
-- **`AGENTS.md`** — the runtime system prompt the `acp` backend reads. This is
-  the *running agent's* identity and behavior. Mirror it with the inline
-  `system_prompt:` in `culture.yaml`.
-- **`CLAUDE.md`** (this file) — dev guidance for a Claude that resides here to
-  *help build and maintain* the repo. The two coexist and serve different
-  readers; keep them in sync only where they overlap (the agent's purpose).
+## Deployment model
 
-## Current state vs. target shape
+model-gear is **scaffold-based, not checkout-based.** The canonical
+`docker-compose.yml` + `env.example` are packaged under `model_gear/templates/`
+and shipped in the wheel. `model init` materialises them into a deployment dir —
+default **`~/.model-gear`**, or a `TARGET` path, or `.` for the local folder.
+Every model-ops verb resolves the deployment dir as: `--compose-dir` →
+`$MODEL_GEAR_DIR` → `~/.model-gear`. There is no compose file at the repo root.
 
-This repo is an **early scaffold**: the only tracked files today are
-`README.md`, `LICENSE`, `.gitignore`, and this `CLAUDE.md`. (A
-`.claude/settings.local.json` may exist in a working copy but is git-ignored —
-per-machine, not committed.) The structure below is the **target**, defined by
-GitHub issue #1 ("Scaffold lepenseur as a
-full CLI/PyPI AgentCulture sibling") and by steward's
-`docs/sibling-pattern.md` — those two are the authoritative contract for what to
-build. When in doubt, read `../steward/docs/sibling-pattern.md` and copy
-steward's own tree as the worked example.
-
-## Target project shape (AgentCulture sibling pattern)
-
-Distributed as **`lepenseur`** on PyPI (Trusted Publishing). Python package
-is `lepenseur`; the binary is `lepenseur`. Layout follows the afi-cli pattern
-(top-level package, no `src/`):
+## CLI surface
 
 ```text
-lepenseur/                  # Python package (pip install lepenseur)
-├── __init__.py             # __version__ via importlib.metadata("lepenseur")
-├── __main__.py             # python -m lepenseur
+model_gear/                 # Python package (pip install model-gear)
+├── __init__.py             # __version__ via importlib.metadata("model-gear")
+├── __main__.py             # python -m model_gear
+├── assess.py               # correctness probes + throughput/prefill (stdlib urllib)
+├── templates/              # packaged docker-compose.yml + env.example (model init)
+├── runtime/                # _env (.env r/w) · _compose (dir resolve + docker) · _health
 └── cli/
-    ├── __init__.py         # argparse main()
-    ├── _errors.py          # LepenseurError + EXIT_USER_ERROR / EXIT_ENV_ERROR
+    ├── __init__.py         # argparse main(); registers every verb
+    ├── _errors.py          # ModelGearError + EXIT_USER_ERROR / EXIT_ENV_ERROR
     ├── _output.py          # strict stdout/stderr split; --json result emitter
+    ├── _runtime_ops.py     # shared glue (deployment dir, port, compose_check)
     └── _commands/          # one module per verb: register(sub) + handler
-        ├── whoami.py       # smallest identity probe — reads culture.yaml
-        ├── learn.py        # orientation verb (agent affordance)
-        └── explain.py      # affordance verb, e.g. `explain backend`
-tests/                      # pytest suite (tests/test_cli_*.py)
-.claude/skills/<name>/      # SKILL.md + scripts/ per skill (see Skills below)
-.github/workflows/          # tests.yml + publish.yml
-pyproject.toml              # version source-of-truth (hatchling, Python ≥3.12)
-AGENTS.md                   # runtime system prompt (acp backend)
-culture.yaml                # backend: acp + model: vllm-local/nvidia/Qwen3-32B-NVFP4
-CHANGELOG.md                # Keep-a-Changelog
-.flake8, .markdownlint-cli2.yaml   # repo-local lint configs (no home-dir configs)
+        ├── switch.py serve.py stop.py status.py assess.py benchmark.py init.py
+        └── whoami.py learn.py explain.py overview.py doctor.py cli.py
 ```
 
-**Mutation safety:** any write verb defaults to **dry-run**; require `--apply`
-to commit. Agents call CLIs in loops, so safe-by-default is mandatory. The
-initial verbs (`whoami`/`learn`/`explain`) are read-only.
+**Mutation safety:** write verbs (`switch`, `serve`, `stop`, `init`) default to
+**dry-run**; require `--apply` to commit. Agents call CLIs in loops, so
+safe-by-default is mandatory. The read-only verbs (`status`, `assess`,
+`benchmark`, `overview`, `whoami`, `explain`, `doctor`) never change the world.
 
 ## Build / test / publish
 
-These commands are the convention across siblings; they apply once
-`pyproject.toml` and the package exist.
-
 - **Install for dev:** `uv sync`
-- **Run CLI from source:** `uv run lepenseur --version` / `uv run python -m lepenseur whoami`
+- **Run CLI from source:** `uv run model --version` / `uv run python -m model_gear whoami`
 - **Tests (all):** `uv run pytest -n auto -v`
-- **Single test:** `uv run pytest tests/test_cli_whoami.py::test_name -v`
-- **Lint:** `uv run black --check lepenseur tests`, `uv run isort --check-only lepenseur tests`, `uv run flake8`, `uv run bandit -r lepenseur`
-- **Version bump (required every PR):** `python3 .claude/skills/version-bump/scripts/bump.py {patch|minor|major}` — updates `pyproject.toml` and prepends a CHANGELOG entry. The `version-check` CI job **fails the PR if the version equals main's** (AgentCulture every-PR-bumps rule — no exceptions, even for docs/config-only changes). Version is a single source of truth in `pyproject.toml`; `lepenseur.__version__` is read from package metadata at import (no separate literal to sync).
-- **Publish:** push to `main` → `publish.yml` builds with `uv build` and publishes `lepenseur` to PyPI via Trusted Publishing (no API tokens). PRs publish a `.dev<run_number>` to TestPyPI. Fork PRs are skipped (no OIDC).
+- **Single test:** `uv run pytest tests/test_cli_runtime.py::test_name -v`
+- **Lint:** `uv run black --check model_gear tests`, `uv run isort --check-only model_gear tests`, `uv run flake8 model_gear tests`, `uv run bandit -c pyproject.toml -r model_gear`
+- **Rubric gate:** `uv run afi cli doctor . --strict` (CI blocks merge if it fails).
+- **Version bump (required every PR):** `python3 .claude/skills/version-bump/scripts/bump.py {patch|minor|major}` — updates `pyproject.toml` and prepends a CHANGELOG entry. The `version-check` CI job **fails the PR if the version equals main's** (AgentCulture every-PR-bumps rule — no exceptions, even for docs/config-only changes). Version is the single source of truth in `pyproject.toml`; `model_gear.__version__` is read from package metadata at import.
+- **Publish:** push to `main` → `publish.yml` builds with `uv build` and publishes `model-gear` to PyPI via Trusted Publishing (no API tokens). PRs publish a `.dev<run_number>` to TestPyPI. Fork PRs are skipped (no OIDC).
 
 ## Skills convention
 
@@ -98,24 +74,21 @@ Six skills are vendored from steward (the canonical upstream) under
 **`run-tests`**, **`sonarclaude`**, **`doc-test-alignment`**. This is
 *cite-don't-import*: copies are owned by this repo and may diverge from steward.
 
-One skill is **local to lepenseur** (not vendored): **`model-runner`** — switch
-the local vLLM runtime model and assess/benchmark it (produces the numbers in
-the per-model `docs/*.md`). It drives this repo's `docker-compose.yml` + `.env`
-and is a maintainer convenience, not something the agent runs.
+One skill is **local to this repo** (not vendored): **`model-runner`** — a thin
+pointer/shim to the `model` CLI for switching/serving/assessing the model. The
+real implementation is the `model` package; the shim `exec`s `model`.
 
 Each skill ships:
 
 1. `SKILL.md` — *why* and *when* to use it (frontmatter `name` must equal the
    directory name; short prose, no inline 10-step walk-throughs).
-2. `scripts/<entry-point>` — the script that automates the workflow. Following
-   a skill should be "run this script," not ten manual steps.
-3. **No external path dependencies.** Scripts must not reach into another
-   skill's home-directory copy or any path outside this repo — vendor what you
-   need. Portability is what lets steward keep siblings aligned.
+2. `scripts/<entry-point>` — the script that automates the workflow.
+3. **No external path dependencies.** Scripts must not reach outside this repo.
 
 Per-machine paths live in **`.claude/skills.local.yaml`** (git-ignored); a
 committed **`.claude/skills.local.yaml.example`** documents every key. Skills
-read the local file and fall back to the example.
+read the local file and fall back to the example. (The Culture posting nick is
+still `lepenseur` — the deployed agent — not the repo name.)
 
 ## PR workflow
 
@@ -136,6 +109,6 @@ Bump the version (above) on every PR or CI's `version-check` job fails the run.
   (`../culture`, `../daria`, `../steward`).
 - **steward owns the six vendored skills** and the sibling-pattern contract.
   steward files issues on siblings but never edits them — so scaffolding and
-  alignment work *for this repo happens in this repo*. After vendoring skills,
-  the follow-up that adds `lepenseur` to steward's `docs/skill-sources.md`
+  alignment work *for this repo happens in this repo*. The follow-up that
+  renames `lepenseur` → `model-gear` in steward's `docs/skill-sources.md`
   "Downstream copies" column must be a **PR on steward**, not an edit from here.

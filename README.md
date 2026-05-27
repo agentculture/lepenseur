@@ -1,37 +1,49 @@
-# lepenseur
+# model-gear
 
-`lepenseur` ("le penseur" — *the thinker*) is the **local thinking agent** of the
-Culture mesh: a long-lived resident that reasons, plans, and analyzes deeply. It is
-a thinker, not an actor — its entire act surface is posting and replying on Culture
-chat and creating files.
+`model-gear` is the tooling that **runs, assesses, and switches** the local,
+OpenAI-compatible vLLM model the Culture mesh consumes. The binary is `model` —
+`model switch`, `model assess`, `model serve`, and so on.
 
-Sibling to [`lecodeur`](https://github.com/agentculture/lecodeur) (the coder),
+The served model is what the [`lepenseur`](#lepenseur-still-gets-deployed) agent
+connects to over the `acp` `vllm-local` provider. model-gear runs the engine;
+lepenseur is one consumer of it.
+
+Sibling to [`culture`](https://github.com/agentculture/culture) (the agent mesh),
 [`daria`](https://github.com/agentculture/daria) (awareness), and
 [`steward`](https://github.com/agentculture/steward) (alignment).
 
 ## Install
 
 ```bash
-uv tool install lepenseur
+uv tool install model-gear
 ```
 
 ## Usage
 
 ```bash
-lepenseur whoami            # identity probe (reads culture.yaml)
-lepenseur learn             # self-teaching prompt for agents
-lepenseur explain backend   # markdown docs for a topic
-lepenseur overview          # descriptive snapshot of the agent
-lepenseur doctor            # self-diagnosis
+model init --apply          # scaffold a deployment dir (default ~/.model-gear)
+model serve --apply         # start the vLLM server (alias: start)
+model switch nvidia/Qwen3-32B-NVFP4 --apply   # switch the served model
+model status                # current model, container state, /health
+model assess                # correctness probes (markdown for a per-model doc)
+model benchmark             # decode throughput + prefill latency
+model stop --apply          # stop the server
+
+model overview              # tool snapshot + served model + candidate list
+model whoami                # tool, machine, served model, container health
+model explain switch        # markdown docs for a topic
+model doctor                # diagnose docker / compose / .env / health
 ```
 
-Every command supports `--json`. Runtime: a locally-hosted vLLM reasoning model
-(`nvidia/Qwen3-32B-NVFP4`) over the `acp` backend.
+Every command supports `--json`. **Write verbs (`switch`, `serve`, `stop`,
+`init`) are dry-run by default** and require `--apply` to commit — agents call
+CLIs in loops, so safe-by-default is mandatory.
 
 ## Running the model locally (vLLM)
 
-`docker-compose.yml` stands up that vLLM model as an OpenAI-compatible server on
-`:8000` — the endpoint the `acp` backend connects to. Tuned for DGX Spark (GB10
+`model init` scaffolds a deployment directory (default `~/.model-gear`) from the
+packaged templates: a `docker-compose.yml` that stands up the vLLM model as an
+OpenAI-compatible server on `:8000`, plus a `.env`. Tuned for DGX Spark (GB10
 Grace Blackwell, 128 GB unified memory) per
 [build.nvidia.com/spark/vllm](https://build.nvidia.com/spark/vllm).
 
@@ -40,9 +52,10 @@ and `docker login nvcr.io` with an [NGC API key](https://org.ngc.nvidia.com/setu
 to pull the `nvcr.io/nvidia/vllm` image.
 
 ```bash
-cp .env.example .env        # set HF_TOKEN if the model repo is gated
-docker compose up -d
-docker compose logs -f vllm # first run downloads ~18 GB of weights
+model init --apply          # writes ~/.model-gear/{docker-compose.yml,.env}
+# edit ~/.model-gear/.env to set HF_TOKEN if the model repo is gated
+model serve --apply         # first run downloads ~18 GB of weights
+model status                # waits/reports until /health is up
 ```
 
 Verify it is up:
@@ -52,10 +65,10 @@ curl -fsS http://localhost:8000/health
 curl -s http://localhost:8000/v1/models   # lists nvidia/Qwen3-32B-NVFP4
 ```
 
-Tunables live in `.env` (`VLLM_MODEL`, `VLLM_GPU_MEM_UTIL`, `VLLM_MAX_MODEL_LEN`,
-`HF_CACHE`, …). `VLLM_SERVED_NAME` must match the part after `vllm-local/` in
-`culture.yaml`. The `.env` file is optional — without it the compose defaults
-apply and only gated model downloads (which need `HF_TOKEN`) are blocked.
+Tunables live in the deployment `.env` (`VLLM_MODEL`, `VLLM_GPU_MEM_UTIL`,
+`VLLM_MAX_MODEL_LEN`, `HF_CACHE`, …). `VLLM_SERVED_NAME` must match the part
+after `vllm-local/` in `culture.yaml` — `model doctor` checks this. `model
+switch` rewrites these keys for you.
 
 The compose `command` intentionally omits `--trust-remote-code`: Qwen3-32B-NVFP4
 loads without it, and enabling it would let a model repo's custom code run
@@ -75,7 +88,14 @@ results, and caveats:
   (`mmangkad/Qwen3.6-27B-NVFP4`), load-tested on DGX Spark; loads under the
   current vLLM image but is slower on decode, so the 32B stays.
 
-Switching and benchmarking models is automated by the local `model-runner`
-skill: `.claude/skills/model-runner/scripts/model-runner.sh switch <model> --apply`
-then `… assess`. `switch` is dry-run without `--apply`; the `assess` output is the
-benchmark block in each per-model doc.
+The numbers in each doc come from `model switch <model> --apply` then `model
+assess` (correctness) and `model benchmark` (throughput). `model overview --list`
+lists these docs and flags which model is currently served.
+
+## lepenseur still gets deployed
+
+The mesh agent served by this model is `lepenseur` ("le penseur" — *the
+thinker*), a local thinking agent. Its runtime identity lives in `AGENTS.md`
+(the `acp` system prompt) and `culture.yaml` (`backend: acp`, `model:
+vllm-local/nvidia/Qwen3-32B-NVFP4`). model-gear is the repo identity and the
+tool; lepenseur is the agent that consumes the model model-gear serves.
