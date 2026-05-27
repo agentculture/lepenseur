@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 
+from model_gear import assess
 from model_gear.cli._errors import EXIT_ENV_ERROR, ModelGearError
 from model_gear.runtime import _compose, _env
 
@@ -44,6 +45,26 @@ def resolve_port_soft(args: argparse.Namespace) -> tuple[int, object]:
         _env.read_env(deploy_dir / _compose.ENV_FILE, "VLLM_PORT", "8000"), "VLLM_PORT"
     )
     return port, deploy_dir
+
+
+def probe_tool_calling(port: int, served: str | None) -> dict:
+    """Verify tool calling on the just-(re)started server.
+
+    Thin adapter over :func:`model_gear.assess.probe_tool_calls` (which never
+    raises — HTTP 400, malformed 200, connection failure, and undecodable bodies
+    all fold into a structured result): builds the local URL and returns the
+    probe result (``ok``/``tool_calls``/``finish``/``error``), so ``switch`` /
+    ``serve`` always completes.
+    """
+    return assess.probe_tool_calls(f"http://localhost:{port}", served or "")
+
+
+def format_tool_probe(tc: dict) -> str:
+    """One-line PASS/FAIL summary of a :func:`probe_tool_calling` result."""
+    if tc.get("ok"):
+        return f"tool calling: PASS — called {', '.join(tc.get('tool_calls') or [])}"
+    reason = tc.get("error") or f"no finish call (tool_calls={tc.get('tool_calls')})"
+    return f"tool calling: FAIL — {reason}"
 
 
 def compose_check(completed: subprocess.CompletedProcess, label: str) -> None:
