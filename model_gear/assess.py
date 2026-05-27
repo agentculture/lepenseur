@@ -17,6 +17,7 @@ from __future__ import annotations
 import contextlib
 import json
 import time
+import urllib.error
 import urllib.request
 
 from model_gear.cli._errors import EXIT_ENV_ERROR, ModelGearError
@@ -59,6 +60,26 @@ _PROBES = [
         "145",
         "train 14:45→17:10 = 145 min",
     ),
+]
+
+# Tool-calling probe (opt-in via ``model assess --tools``): mirrors issue #9's
+# acceptance check — a ``tool_choice:"auto"`` request must return a ``tool_calls``
+# array naming the ``finish`` function. Requires the server's
+# ``--enable-auto-tool-choice`` + ``--tool-call-parser`` flags.
+_TOOL_PROBE_PROMPT = "Call the finish tool with summary hello."
+_TOOL_PROBE_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "finish",
+            "description": "Finish the task with a short summary.",
+            "parameters": {
+                "type": "object",
+                "properties": {"summary": {"type": "string"}},
+                "required": ["summary"],
+            },
+        },
+    }
 ]
 
 
@@ -144,6 +165,63 @@ def _probe(url: str, model: str, prompt: str, expect: str) -> dict:
     }
 
 
+def _tool_probe(url: str, model: str) -> dict:
+    """Probe OpenAI tool calling; degrade gracefully, never abort the assess run.
+
+    A server without ``--enable-auto-tool-choice`` rejects ``tool_choice:"auto"``
+    with HTTP 400. A server that *has* the flags but returns an unexpected payload
+    (no ``choices``/``message``, or a wrong-shaped ``tool_calls``) would otherwise
+    raise inside :func:`run_correctness`'s ``_api_errors`` block and abort. Both
+    cases are surfaced here as a structured ``ok=False`` result with a FAIL row.
+    """
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": _TOOL_PROBE_PROMPT}],
+        "tools": _TOOL_PROBE_TOOLS,
+        "tool_choice": "auto",
+        "max_tokens": 512,
+        "temperature": 0,
+    }
+    try:
+        d = _post(url, payload)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode(errors="replace").strip()
+        return {
+            "ok": False,
+            "tool_calls": [],
+            "finish": None,
+            "error": f"HTTP {exc.code}: {body[:200]}",
+        }
+    # Defensive parsing: a malformed 200 must not abort the run (documented
+    # "FAIL row, no abort"). Use .get()/isinstance throughout, with a catch-all
+    # net for any remaining shape surprise.
+    try:
+        choices = d.get("choices") if isinstance(d, dict) else None
+        choice = choices[0] if isinstance(choices, list) and choices else {}
+        msg = choice.get("message") or {}
+        raw_calls = msg.get("tool_calls")
+        calls = raw_calls if isinstance(raw_calls, list) else []
+        names = []
+        for c in calls:
+            fn = c.get("function") if isinstance(c, dict) else None
+            name = fn.get("name") if isinstance(fn, dict) else None
+            if name:
+                names.append(name)
+        return {
+            "ok": "finish" in names,
+            "tool_calls": names,
+            "finish": choice.get("finish_reason"),
+            "error": None,
+        }
+    except (KeyError, IndexError, TypeError, AttributeError) as exc:
+        return {
+            "ok": False,
+            "tool_calls": [],
+            "finish": None,
+            "error": f"unexpected response shape ({exc.__class__.__name__}: {exc})",
+        }
+
+
 def _decode_throughput(url: str, model: str, n_tokens: int, runs: int = 2) -> list[float]:
     rates = []
     for _ in range(runs):
@@ -182,17 +260,25 @@ def _prefill(url: str, model: str) -> dict:
     return {"prompt_tokens": d["usage"]["prompt_tokens"], "seconds": round(dt, 2)}
 
 
-def run_correctness(url: str, model: str | None = None) -> dict:
-    """Run the fixed correctness probes; return a structured result."""
+def run_correctness(url: str, model: str | None = None, check_tools: bool = False) -> dict:
+    """Run the fixed correctness probes; return a structured result.
+
+    When ``check_tools`` is set, also probe OpenAI tool calling and report it
+    under ``tool_calling`` (``None`` otherwise). ``passed`` reflects the content
+    probes only — a tool-less server still passes correctness.
+    """
     url = url.rstrip("/")
     hstatus = health_status(url)
     model, max_len = served_model(url, model)
     probes = []
+    tool_calling = None
     with _api_errors("correctness probe"):
         for prompt, expect, label in _PROBES:
             result = _probe(url, model, prompt, expect)
             result["label"] = label
             probes.append(result)
+        if check_tools:
+            tool_calling = _tool_probe(url, model)
     trace_field = next((p["trace_field"] for p in probes if p["trace_field"]), None)
     trace_len = max((p["trace_len"] for p in probes), default=0)
     return {
@@ -204,6 +290,7 @@ def run_correctness(url: str, model: str | None = None) -> dict:
         "trace_field": trace_field or "(none)",
         "trace_len": trace_len,
         "passed": all(p["ok"] for p in probes),
+        "tool_calling": tool_calling,
     }
 
 
@@ -246,6 +333,15 @@ def render_correctness(result: dict) -> str:
     lines.append(
         f"| reasoning trace field | `{result['trace_field']}` (len {result['trace_len']}) |"
     )
+    tc = result.get("tool_calling")
+    if tc is not None:
+        if tc["ok"]:
+            detail = f"PASS — called {', '.join(tc['tool_calls'])}"
+        else:
+            detail = "FAIL — " + (
+                tc.get("error") or f"no finish call (tool_calls={tc['tool_calls']})"
+            )
+        lines.append(f"| tool calling (`tool_choice:auto`) | {detail} |")
     return "\n".join(lines)
 
 

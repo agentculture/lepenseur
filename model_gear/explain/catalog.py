@@ -61,7 +61,8 @@ _SWITCH = """\
 `model switch <model>` changes which vLLM model is served. **Dry-run by
 default** (prints the plan, changes nothing); `--apply` commits.
 
-On `--apply` it writes five vars to the deployment `.env` —
+On `--apply` it writes five vars to the deployment `.env` (plus
+`VLLM_TOOL_CALL_PARSER` when `--tool-call-parser` is given) —
 
 ```text
 VLLM_MODEL, VLLM_SERVED_NAME, VLLM_PORT, VLLM_MAX_MODEL_LEN, VLLM_GPU_MEM_UTIL
@@ -71,9 +72,11 @@ VLLM_MODEL, VLLM_SERVED_NAME, VLLM_PORT, VLLM_MAX_MODEL_LEN, VLLM_GPU_MEM_UTIL
 `/health` (the first run downloads weights, so this can take many minutes).
 
 Flags: `--port`, `--max-model-len` (default 32768), `--served-name` (default:
-the model name), `--gpu-mem-util` (default 0.6), `--compose-dir`, `--apply`,
-`--json`. Only one ~30B-class model fits on a single GB10 at a time, so the
-switch frees the prior model before starting the new one.
+the model name), `--gpu-mem-util` (default 0.6), `--tool-call-parser` (e.g.
+`hermes` for Qwen3 dense, `qwen3_coder` for Qwen3-Coder/3.6; written to
+`VLLM_TOOL_CALL_PARSER` only when given), `--compose-dir`, `--apply`, `--json`.
+Only one ~30B-class model fits on a single GB10 at a time, so the switch frees
+the prior model before starting the new one.
 """
 
 _SERVE = """\
@@ -107,6 +110,10 @@ It also detects which field carried the reasoning trace (`reasoning` on the
 nv26.04 vLLM build, `reasoning_content` on older builds) and reports its length,
 plus host-side facts (image tag, GPU memory). Throughput lives in
 `model benchmark`. Supports `--json`.
+
+`--tools` adds an OpenAI tool-calling probe: a `tool_choice:"auto"` request must
+return a `tool_calls` array naming a `finish` function (degrades gracefully to a
+FAIL row if the server lacks `--enable-auto-tool-choice`).
 """
 
 _BENCHMARK = """\
@@ -146,6 +153,8 @@ as the `model-gear-vllm` container. `model init` scaffolds it into
 --quantization=modelopt_fp4   # nvidia/ checkpoints are ModelOpt FP4
 --kv-cache-dtype=fp8
 --reasoning-parser=qwen3      # expose the <think> trace
+--enable-auto-tool-choice     # OpenAI tool/function calling (tool_choice:"auto")
+--tool-call-parser=hermes     # VLLM_TOOL_CALL_PARSER; qwen3_coder for Qwen3-Coder/3.6
 --enable-prefix-caching
 ```
 
