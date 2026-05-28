@@ -281,3 +281,13 @@ def test_open_upstream_refused_raises_upstream_error() -> None:
     b = Backend("primary", "http://127.0.0.1:1", "P")
     with pytest.raises(S.UpstreamError):
         S.open_upstream(b, "/x", b"{}", [], connect_timeout=1, read_timeout=2)
+
+
+def test_open_upstream_malformed_url_raises_upstream_error() -> None:
+    from model_gear.gateway._routing import Backend
+
+    # A non-numeric port makes urlsplit's .port raise ValueError — must surface as
+    # UpstreamError (→ failover), not an uncaught 500.
+    b = Backend("primary", "http://host:not-a-port", "P")
+    with pytest.raises(S.UpstreamError):
+        S.open_upstream(b, "/x", b"{}", [], connect_timeout=1, read_timeout=2)

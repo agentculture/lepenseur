@@ -172,29 +172,32 @@ def open_upstream(
     Uses a short ``connect_timeout`` for establishing the socket (so a down
     backend fails over fast) then a long ``read_timeout`` for the response (a
     reasoning model's first token is slow). Raises :class:`UpstreamError` if the
-    connection can't be established; an HTTP error status is returned as a normal
-    response (the caller decides whether 5xx triggers failover).
+    backend can't be reached — including a malformed ``base_url`` (a non-numeric
+    port makes ``parts.port`` raise ``ValueError``; a bad path/host raises
+    ``http.client.InvalidURL``) — so the caller fails over instead of 500ing. An
+    HTTP error *status* is returned as a normal response (the caller decides
+    whether a 5xx triggers failover).
     """
-    parts = urlsplit(backend.base_url)
-    if parts.scheme == "https":
-        conn = http.client.HTTPSConnection(
-            parts.hostname, parts.port or 443, timeout=connect_timeout
-        )
-    else:
-        conn = http.client.HTTPConnection(parts.hostname, parts.port or 80, timeout=connect_timeout)
+    conn = None
     try:
+        parts = urlsplit(backend.base_url)
+        if parts.scheme == "https":
+            conn = http.client.HTTPSConnection(
+                parts.hostname, parts.port or 443, timeout=connect_timeout
+            )
+        else:
+            conn = http.client.HTTPConnection(
+                parts.hostname, parts.port or 80, timeout=connect_timeout
+            )
         conn.connect()
-    except OSError as exc:
-        conn.close()
-        raise UpstreamError(f"{backend.name}: connect failed: {exc}") from exc
-    if conn.sock is not None:
-        conn.sock.settimeout(read_timeout)
-    try:
+        if conn.sock is not None:
+            conn.sock.settimeout(read_timeout)
         conn.request("POST", path, body=body, headers=dict(headers))
         resp = conn.getresponse()
-    except OSError as exc:
-        conn.close()
-        raise UpstreamError(f"{backend.name}: request failed: {exc}") from exc
+    except (OSError, http.client.HTTPException, ValueError) as exc:
+        if conn is not None:
+            conn.close()
+        raise UpstreamError(f"{backend.name}: {exc}") from exc
     return _Upstream(
         status=resp.status, headers=filter_headers(resp.getheaders()), _resp=resp, _conn=conn
     )
