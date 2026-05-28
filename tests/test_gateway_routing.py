@@ -153,3 +153,15 @@ def test_filter_headers_drops_hop_by_hop() -> None:
 def test_frame_chunk() -> None:
     assert S.frame_chunk(b"hello") == b"5\r\nhello\r\n"
     assert S.frame_chunk(b"") == b"0\r\n\r\n"  # (matches CHUNK_TERMINATOR for empty)
+
+
+def test_read_chunked_body() -> None:
+    import io
+
+    # two chunks + zero terminator; chunk extensions on the first are ignored
+    raw = b"5;ext=1\r\nhello\r\n6\r\n world\r\n0\r\n\r\n"
+    assert S.read_chunked_body(io.BytesIO(raw)) == b"hello world"
+    # a malformed size stops the read rather than misreading
+    assert S.read_chunked_body(io.BytesIO(b"zz\r\n")) == b""
+    # empty / truncated stream → empty body
+    assert S.read_chunked_body(io.BytesIO(b"")) == b""

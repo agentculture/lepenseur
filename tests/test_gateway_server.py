@@ -182,6 +182,31 @@ def test_integration_buffered_post(gateway) -> None:
         assert json.load(r)["echo"] == "primary"
 
 
+def test_integration_chunked_request_body_is_decoded(gateway) -> None:
+    # A chunked request body (no Content-Length) must reach the backend intact,
+    # not be forwarded as empty. The stub echoes the backend it routed to; with a
+    # valid `model` the body must parse and route to the primary (default).
+    host, port = gateway.removeprefix("http://").split(":")
+    body = b'{"model":"P"}'
+    chunked = b"%X\r\n%s\r\n0\r\n\r\n" % (len(body), body)
+    request = (
+        b"POST /v1/chat/completions HTTP/1.1\r\n"
+        b"Host: x\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n"
+    ) + chunked
+    with socket.create_connection((host, int(port)), timeout=5) as sock:
+        sock.sendall(request)
+        buf = b""
+        while b"\r\n\r\n" not in buf or b'"echo"' not in buf:
+            data = sock.recv(4096)
+            if not data:
+                break
+            buf += data
+    assert b"200" in buf.split(b"\r\n", 1)[0]
+    assert b'"echo": "primary"' in buf  # body decoded → default route, not empty
+
+
 def test_integration_streaming_post_is_chunked(gateway) -> None:
     # Raw socket so we can see the chunked framing on the wire (urllib would decode it).
     host, port = gateway.removeprefix("http://").split(":")

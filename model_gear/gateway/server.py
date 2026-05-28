@@ -103,6 +103,32 @@ def frame_chunk(chunk: bytes) -> bytes:
 CHUNK_TERMINATOR = b"0\r\n\r\n"
 
 
+def read_chunked_body(rfile, max_bytes: int = 64 * 1024 * 1024) -> bytes:
+    """Decode an HTTP/1.1 ``Transfer-Encoding: chunked`` request body from ``rfile``.
+
+    Clients/proxies may send a chunked body with no ``Content-Length``; reading
+    only by length would forward an empty payload. Stops at the zero-length
+    chunk, ignores chunk extensions, and caps the total at ``max_bytes`` so a
+    malformed/huge stream can't exhaust memory.
+    """
+    body = bytearray()
+    while len(body) <= max_bytes:
+        size_line = rfile.readline()
+        if not size_line:
+            break  # stream ended early
+        size_field = size_line.split(b";", 1)[0].strip()  # drop chunk extensions
+        try:
+            size = int(size_field, 16)
+        except ValueError:
+            break  # malformed size → stop rather than misread
+        if size == 0:
+            rfile.readline()  # consume the trailing CRLF after the last chunk
+            break
+        body += rfile.read(size)
+        rfile.readline()  # consume the CRLF following each chunk
+    return bytes(body)
+
+
 # --- upstream client -------------------------------------------------------
 
 
@@ -299,8 +325,16 @@ class _Handler(BaseHTTPRequestHandler):
 
     # --- relay helpers ---
     def _read_body(self) -> bytes:
-        length = int(self.headers.get("Content-Length") or 0)
-        return self.rfile.read(length) if length > 0 else b""
+        cl = self.headers.get("Content-Length")
+        if cl is not None:
+            try:
+                length = int(cl)
+            except ValueError:
+                length = 0
+            return self.rfile.read(length) if length > 0 else b""
+        if "chunked" in (self.headers.get("Transfer-Encoding") or "").lower():
+            return read_chunked_body(self.rfile)
+        return b""
 
     def _relay_buffered(self, resp: GatewayResponse) -> None:
         data = resp.upstream.read_all()
