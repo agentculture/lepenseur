@@ -29,7 +29,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   — matching what runs on the DGX Spark and convertible's parent model. The dense
   `nvidia/Qwen3-32B-NVFP4` remains a supported candidate (`PRIMARY_MODEL` /
   `model switch`). Recomputed co-resident GPU memory: `PRIMARY_GPU_MEM_UTIL=0.55`
-  + `FALLBACK_GPU_MEM_UTIL=0.30` (the 27B is heavier than the 32B). Updated the
+  and `FALLBACK_GPU_MEM_UTIL=0.30` (the 27B is heavier than the 32B). Updated the
   fleet + single-model templates, `gateway/_config.py`, `whoami` default,
   `culture.yaml` / `AGENTS.md` / `CLAUDE.md` (served-model coherence chain), and
   the per-model + gateway-fleet docs.
