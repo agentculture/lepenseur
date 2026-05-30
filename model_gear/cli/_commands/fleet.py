@@ -8,7 +8,8 @@ single-model ``serve`` / ``stop`` / ``status``:
   then waits for the gateway ``/health``. Dry-run by default; ``--apply`` commits.
 - ``model fleet down`` — ``docker compose down``. Dry-run by default; ``--apply``.
 - ``model fleet status`` — read-only: each container's state, the gateway's
-  ``/health``, and the routed model list (``/v1/models``).
+  ``/health``, and the *warm* routed model list (``/v1/models``). The full catalog
+  you can switch to is ``model overview --list`` / ``/v1/models/supported``.
 
 ``model switch`` does NOT drive the fleet (it rewrites the single-model ``VLLM_*``
 keys); change fleet models by editing the fleet ``.env`` and re-running ``up``.
@@ -166,7 +167,11 @@ def register(sub: argparse._SubParsersAction) -> None:
     down.add_argument("--json", action="store_true", help=_JSON_HELP)
     down.set_defaults(func=cmd_fleet_down)
 
-    st = noun.add_parser("status", help="Read-only: container states, gateway /health, /v1/models.")
+    st = noun.add_parser(
+        "status",
+        help="Read-only: container states, gateway /health, warm /v1/models "
+        "(catalog: overview --list).",
+    )
     _add_compose_dir(st)
     st.add_argument("--port", type=int, help=_PORT_HELP)
     st.add_argument("--json", action="store_true", help=_JSON_HELP)

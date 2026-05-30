@@ -12,6 +12,10 @@ KV allocation. Plan for a multi-minute cold start. Decode re-confirmed at
 
 Source: <https://huggingface.co/mmangkad/Qwen3.6-27B-NVFP4> — public, Apache-2.0.
 
+> One entry in model-gear's **supported catalog** (`model overview --list`). For
+> the catalog-vs-warm distinction — what you *can* load vs. what's loaded *now* —
+> see [`gateway-fleet.md`](gateway-fleet.md#supported-catalog-vs-warm-backends).
+
 ## What it is
 
 - NVFP4 (NVIDIA ModelOpt) quantization of **`Qwen/Qwen3.6-27B`**.

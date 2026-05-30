@@ -64,6 +64,8 @@ A pure-stdlib (`http.server` + `http.client`, no third-party deps) reverse proxy
   (proxied), `/v1/models` (OpenAI-standard, lists the two loaded backends),
   `/v1/models/supported` (the full supported-model catalog — every gear you can
   change to, each flagged `loaded` / `default`), `/health` (gateway liveness).
+  See [Supported catalog vs. warm backends](#supported-catalog-vs-warm-backends)
+  for what `/v1/models` and `/v1/models/supported` each mean.
 
 The gateway image is built from the scaffolded `Dockerfile.gateway`
 (`pip install model-gear==${MODEL_GEAR_VERSION}`, as a non-root user); `model init
@@ -71,6 +73,27 @@ The gateway image is built from the scaffolded `Dockerfile.gateway`
 is required (pinning keeps the image reproducible); from-source/dev boxes that run
 ahead of a PyPI release point `MODEL_GEAR_VERSION` at a published TestPyPI `.devN`
 build.
+
+### Supported catalog vs. warm backends
+
+Two questions that look alike but aren't:
+
+- **What's loaded right now?** — the model(s) actually in GPU memory. The live
+  source is `GET /v1/models` (OpenAI-standard; one model in single-model mode, both
+  backends in the fleet); `model fleet status` queries it. It changes when you
+  `model switch` or bring the fleet up/down. (`model status` / `model whoami`
+  instead report the model the deployment is *configured* to serve — from `.env` —
+  plus container health, which is configuration, not a live `/v1/models` query.)
+- **What's *supported* (what can I warm up)?** — the curated catalog of "gears"
+  model-gear knows how to serve, from `model overview --list` or
+  `GET /v1/models/supported`. Each entry is tagged `load-tested` (proven on this
+  box) or `configured` (declared, not yet proven). It's **static** — defined in
+  `model_gear/catalog.py`, shipped in the wheel, unchanged by what's running. On
+  the gateway endpoint each entry also carries a runtime-computed `loaded` /
+  `default` flag.
+
+Mnemonic: the catalog is *what's on the menu (and which dishes we've cooked)*;
+`/v1/models` is *what's hot now*.
 
 ## Verbs
 
@@ -83,7 +106,9 @@ model fleet down --apply          # docker compose down
 
 `model fleet up` / `down` are **dry-run by default**; pass `--apply` to commit.
 `--compose-dir` overrides the deployment dir (default `$MODEL_GEAR_DIR` or
-`~/.model-gear`). `model fleet status` is read-only.
+`~/.model-gear`). `model fleet status` is read-only — it reports the *warm*
+backends (`/v1/models`); for the full set you can switch to, use
+`model overview --list` / `/v1/models/supported` (see above).
 
 **`model switch` does not drive the fleet** — it rewrites the single-model
 `VLLM_*` keys. Change fleet models by editing the fleet `.env`
