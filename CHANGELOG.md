@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-05-30
+
+### Changed
+
+- **Documented "supported catalog vs. warm" consistently** across the README,
+  `docs/gateway-fleet.md` (new "Supported catalog vs. warm backends" subsection),
+  the per-model docs, and the CLI teaching surfaces (`model learn`,
+  `model explain models`/`overview`/`status`/`whoami`/root, and the
+  `overview`/`status`/`whoami`/`fleet status` help strings). The distinction:
+  `model overview --list` / `GET /v1/models/supported` = the gears you *can* switch
+  to (tagged `load-tested`/`configured`); `GET /v1/models` / `model status` /
+  `model fleet status` = what's *warm* right now. Docs/help text only — no behavior
+  change.
+
 ## [0.11.0] - 2026-05-30
 
 ### Added

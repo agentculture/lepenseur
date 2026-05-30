@@ -4,6 +4,10 @@ The **current runtime model** model-gear runs, served by local vLLM over the
 `acp` backend (the model-gear agent consumes it). Declared in `culture.yaml` as
 `vllm-local/nvidia/Qwen3-32B-NVFP4` and stood up by the packaged compose template.
 
+> One entry in model-gear's **supported catalog** (`model overview --list`). For
+> the catalog-vs-warm distinction — what you *can* load vs. what's loaded *now* —
+> see [`gateway-fleet.md`](gateway-fleet.md#supported-catalog-vs-warm-backends).
+
 ## What it is
 
 - 32B **dense** reasoning model, quantized to **NVFP4** (NVIDIA ModelOpt FP4).

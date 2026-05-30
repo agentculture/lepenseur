@@ -4,8 +4,11 @@ The **dense fallback** the gateway fleet pairs with the default primary
 (`mmangkad/Qwen3.6-27B-NVFP4`). It **replaces the Qwen3.6-35B-A3B MoE**, which
 never loaded on this GB10 (OOM co-resident, stall solo — see
 [`docs/qwen3.6-35b-a3b-nvfp4.md`](qwen3.6-35b-a3b-nvfp4.md)). Mistral is dense,
-loads reliably, and serves text + tool calls. See
-[`docs/gateway-fleet.md`](gateway-fleet.md) for the fleet topology.
+loads reliably, and serves text + tool calls. It is one entry in model-gear's
+**supported catalog** (`model overview --list`); see
+[`docs/gateway-fleet.md`](gateway-fleet.md) for the fleet topology and the
+[catalog-vs-warm distinction](gateway-fleet.md#supported-catalog-vs-warm-backends)
+(what you *can* load vs. what's loaded *now*).
 
 Source: <https://huggingface.co/RedHatAI/Mistral-Small-3.2-24B-Instruct-2506-NVFP4>.
 

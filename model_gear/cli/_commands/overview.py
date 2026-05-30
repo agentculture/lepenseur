@@ -185,9 +185,13 @@ def register(sub: argparse._SubParsersAction) -> None:
         nargs="?",
         help="Ignored — overview always describes model-gear itself.",
     )
-    p.add_argument("--current", action="store_true", help="Show only the currently-served model.")
     p.add_argument(
-        "--list", action="store_true", help="Show only the candidate-model list (docs/)."
+        "--current", action="store_true", help="Show only the currently-served (warm) model."
+    )
+    p.add_argument(
+        "--list",
+        action="store_true",
+        help="Show only the supported-model catalog (the gears you can switch to).",
     )
     p.add_argument("--json", action="store_true", help="Emit structured JSON.")
     p.set_defaults(func=cmd_overview)

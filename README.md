@@ -62,7 +62,7 @@ Verify it is up:
 
 ```bash
 curl -fsS http://localhost:8000/health
-curl -s http://localhost:8000/v1/models   # lists mmangkad/Qwen3.6-27B-NVFP4
+curl -s http://localhost:8000/v1/models   # what's WARM now (the served model), not the catalog
 ```
 
 Tunables live in the deployment `.env` (`VLLM_MODEL`, `VLLM_GPU_MEM_UTIL`,
@@ -95,7 +95,7 @@ model fleet status                # container states + gateway /health + /v1/mod
 ```
 
 ```bash
-curl -s http://localhost:8000/v1/models       # lists BOTH served models
+curl -s http://localhost:8000/v1/models       # the two WARM backends (not the full catalog — see below)
 # route explicitly by name; an unknown/missing model falls back to the primary
 curl -s http://localhost:8000/v1/chat/completions -d '{"model":"RedHatAI/Mistral-Small-3.2-24B-Instruct-2506-NVFP4","messages":[...]}'
 ```
@@ -130,7 +130,30 @@ results, and caveats:
 
 The numbers in each doc come from `model switch <model> --apply` then `model
 assess` (correctness) and `model benchmark` (throughput). `model overview --list`
-lists these docs and flags which model is currently served.
+lists the catalog (these models) and flags which one is currently served.
+
+### What's loaded vs. what's supported
+
+Two questions that look alike but aren't:
+
+- **What's supported (what can I warm up)?** — the curated catalog of "gears"
+  model-gear knows how to serve, each tagged `load-tested` (proven on this box) or
+  `configured` (declared, not yet proven). It's **static** — defined in
+  `model_gear/catalog.py`, shipped in the wheel, unchanged by what's running.
+  Read it with `model overview --list` or the gateway's `GET /v1/models/supported`.
+- **What's warm right now?** — the model(s) actually loaded in GPU memory this
+  instant (one in single-model mode, two in the fleet). Read it with
+  `GET /v1/models` (OpenAI-standard), `model status`, or `model fleet status`.
+  It's runtime truth — it changes when you `model switch` or run the fleet.
+
+| Question | CLI | HTTP |
+|---|---|---|
+| What *can* I warm up? (catalog) | `model overview --list` | `GET /v1/models/supported` |
+| What's warm *now*? | `model status` / `model fleet status` | `GET /v1/models` |
+
+Mnemonic: the catalog is *what's on the menu (and which dishes we've cooked)*;
+`/v1/models` is *what's hot now*. See
+[`docs/gateway-fleet.md`](docs/gateway-fleet.md#supported-catalog-vs-warm-backends).
 
 ## model-gear is also the deployed agent
 

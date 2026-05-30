@@ -30,11 +30,13 @@ tool and the deployed agent share one identity).
 - `model fleet up|down|status` — drive the 2-model gateway deployment (one
   OpenAI front over two always-warm models). Scaffold it with
   `model init --fleet`. `up`/`down` are dry-run by default; `--apply` to commit.
-- `model status` — read-only: current model, container state, `/health`.
+- `model status` — read-only: the currently-served (warm) model, container state,
+  `/health`. (For the full set you can switch to, use `model overview --list`.)
 - `model assess` — read-only correctness probes + reasoning-trace detection.
 - `model benchmark` — read-only decode throughput + prefill latency.
-- `model overview` — snapshot of the tool, the served model, and the candidate
-  list (`--current` / `--list` to filter).
+- `model overview` — snapshot of the tool, the served model, and the supported
+  catalog (the gears you can switch to). `--current` = warm model; `--list` =
+  catalog.
 - `model whoami` — tool, machine, served model, container health.
 - `model doctor` — diagnose docker / compose / `.env` / health.
 
@@ -99,7 +101,8 @@ _STATUS = """\
 Read-only snapshot of the current deployment: the configured `VLLM_MODEL` /
 `VLLM_SERVED_NAME` / `VLLM_PORT` (from `.env`), the `model-gear-vllm` container's
 lifecycle + health state, and whether `/health` is responding. Supports
-`--json`.
+`--json`. This is the *warm* model (what's loaded now) — for the full set you can
+switch to (the supported catalog), use `model overview --list`.
 """
 
 _ASSESS = """\
@@ -191,8 +194,17 @@ run on this hardware, holding the correctness + throughput numbers produced by
 - `docs/qwen3.6-35b-a3b-nvfp4.md` — `mmangkad/Qwen3.6-35B-A3B-NVFP4`, a MoE
   candidate (the former fallback; OOM'd/stalled on the GB10, never load-tested).
 
-`model overview --list` lists these and flags which one is currently served. To
-run two side-by-side behind one OpenAI endpoint, see `model explain fleet`.
+These models *are* the **supported catalog** — the gears you can switch to, each
+tagged `load-tested` (proven on this box) or `configured` (declared, not yet
+proven). It is static (defined in `model_gear/catalog.py`, shipped in the wheel).
+Read it with `model overview --list` or the gateway's `GET /v1/models/supported`;
+it flags which one is currently served.
+
+For what is *warm right now* (loaded in GPU memory this instant) use `/v1/models`,
+`model status`, or `model fleet status` instead — that is runtime truth, not the
+catalog. (Mnemonic: the catalog is what's on the menu; `/v1/models` is what's hot
+now.) See `model explain gateway` for the endpoint split, and `model explain fleet`
+to run two side-by-side behind one OpenAI endpoint.
 """
 
 _FLEET = """\
@@ -257,7 +269,8 @@ The smallest identity probe. Reports model-gear's view: the `tool` + `version`,
 the `machine` (hostname + GPU), the currently-`served_model` and `port` (read
 from the deployment `.env`), the `container_health`, and the `agent` that
 consumes the model (`model-gear`, from `culture.yaml`). Read-only; supports
-`--json`.
+`--json`. `served_model` is the *warm* model — see `model overview --list` for
+the full supported catalog you can switch to.
 """
 
 _LEARN = """\
@@ -282,11 +295,14 @@ _OVERVIEW = """\
 # model overview
 
 A read-only snapshot of model-gear: identity (tool / version / machine), the verb
-surface, capabilities, the currently-served model, and the candidate-model list
-from `docs/`. `--current` shows only the served-model block; `--list` shows only
-the candidate list. `model cli overview` is the parallel snapshot of the CLI
-surface itself. Supports `--json` (`{"subject", "sections"}`). A stray path
-argument is accepted and ignored, so `overview <path>` never hard-fails.
+surface, capabilities, the currently-served (warm) model, and the **supported
+catalog** — the gears you can switch to (`model_gear/catalog.py`, each tagged
+`load-tested` / `configured`). `--current` shows only the warm-model block;
+`--list` shows only the catalog (the same set as the gateway's
+`/v1/models/supported`; for what's warm *now*, use `/v1/models` / `model status`).
+`model cli overview` is the parallel snapshot of the CLI surface itself. Supports
+`--json` (`{"subject", "sections"}`). A stray path argument is accepted and
+ignored, so `overview <path>` never hard-fails.
 """
 
 _DOCTOR = """\
