@@ -12,8 +12,6 @@ KV allocation. Plan for a multi-minute cold start. Decode re-confirmed at
 
 Source: <https://huggingface.co/mmangkad/Qwen3.6-27B-NVFP4> — public, Apache-2.0.
 
-Source: <https://huggingface.co/mmangkad/Qwen3.6-27B-NVFP4> — public, Apache-2.0.
-
 ## What it is
 
 - NVFP4 (NVIDIA ModelOpt) quantization of **`Qwen/Qwen3.6-27B`**.

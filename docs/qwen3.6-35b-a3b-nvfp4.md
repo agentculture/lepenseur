@@ -38,7 +38,7 @@ Configured via the `FALLBACK_*` keys in the fleet `.env` (scaffolded by
 FALLBACK_MODEL=mmangkad/Qwen3.6-35B-A3B-NVFP4
 FALLBACK_SERVED_NAME=mmangkad/Qwen3.6-35B-A3B-NVFP4
 FALLBACK_MAX_MODEL_LEN=32768
-FALLBACK_GPU_MEM_UTIL=0.30          # both models warm: keep primary+fallback well under 1.0
+FALLBACK_GPU_MEM_UTIL=0.35          # both models warm: keep primary+fallback well under 1.0 (dedicated box)
 FALLBACK_TOOL_CALL_PARSER=qwen3_coder
 FALLBACK_QUANTIZATION=modelopt_fp4
 ```
